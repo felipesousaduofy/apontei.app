@@ -17,7 +17,15 @@ export default function Signup() {
     setErro('');
     if (senha.length < 6) { setErro('A senha precisa ter pelo menos 6 caracteres.'); return; }
     setEnviando(true);
-    const { error } = await supabase.auth.signUp({ email, password: senha });
+    // manda o link de confirmação de volta para quem realmente pediu o
+    // cadastro — testando em localhost, volta para localhost; em produção,
+    // para o domínio de produção. Sem isso, o Supabase usa sempre a "Site
+    // URL" fixa configurada no painel, não importa de onde veio o cadastro.
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+    });
     setEnviando(false);
     if (error) { setErro('Não foi possível criar a conta: ' + error.message); return; }
     setEnviado(true);

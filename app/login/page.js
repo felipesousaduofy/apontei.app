@@ -16,12 +16,20 @@ export default function Login() {
   const [etapa, setEtapa] = useState('');
   const enviando = etapa !== '';
 
-  // quem foi desativado é mandado para cá pelo middleware; encerra a sessão
-  // que sobrou no navegador e explica o que aconteceu.
+  // quem foi desativado é mandado para cá pelo middleware; quem clicou num
+  // link de confirmação vencido ou já usado, pela troca de código em
+  // /auth/callback. Os dois casos encerram a sessão que sobrou no navegador
+  // e explicam o que aconteceu.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('motivo') !== 'inativo') return;
-    setErro('Sua conta foi desativada. Fale com um administrador do apontei.');
+    const motivo = params.get('motivo');
+    if (motivo === 'inativo') {
+      setErro('Sua conta foi desativada. Fale com um administrador do apontei.');
+    } else if (motivo === 'link_invalido') {
+      setErro('Esse link de confirmação já foi usado ou venceu. Cadastre-se de novo ou entre com sua senha, se a conta já estiver confirmada.');
+    } else {
+      return;
+    }
     supabaseNavegador().auth.signOut();
   }, []);
 
