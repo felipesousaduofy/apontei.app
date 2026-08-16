@@ -45,7 +45,10 @@ export default function Resumo({ lancamentos, dias, modo, config }) {
         sufixo="%"
         barra={r.percentual}
         estado={estadoJornada}
-        nota={`meta de ${minParaHM(r.meta)}`}
+        nota={
+          `meta de ${minParaHM(r.meta)}` +
+          (r.temDescanso ? ` · já descontado ${minParaHM(r.duracaoDescanso)} de descanso` : '')
+        }
       />
 
       <Kpi

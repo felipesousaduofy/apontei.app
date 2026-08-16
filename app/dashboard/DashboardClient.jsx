@@ -7,12 +7,16 @@ import {
   CONFIG_PADRAO, agoraHM, diasDoPeriodo, duracaoMin, emAndamento, hmParaMin,
   hojeISO, isoDe, minParaDecimal, minParaHM, normalizar, rotuloDoPeriodo
 } from '@/lib/apontamento';
+import { ordenarPorUrgencia } from '@/lib/kanban';
 import Marca from '../Marca';
 import Icone from '../Icone';
 import TemaBotao from '../TemaBotao';
+import { avisarNavegacao } from '../Progresso';
 import Regua from './Regua';
 import Resumo from './Resumo';
 import Esqueleto from './Esqueleto';
+import Pendencias from './Pendencias';
+import AlertaPrazos from './AlertaPrazos';
 import ListaLancamentos from './ListaLancamentos';
 import Consolidado from './Consolidado';
 import DialogoManual from './DialogoManual';
@@ -45,6 +49,11 @@ export default function DashboardClient({ email, ehAdmin }) {
   const [manual, setManual] = useState(null);
   const [ajustes, setAjustes] = useState(false);
   const [confirmacao, setConfirmacao] = useState(null);
+  const [saindo, setSaindo] = useState(false);
+
+  const [tarefas, setTarefas] = useState([]);
+  const [tarefasCarregadas, setTarefasCarregadas] = useState(false);
+  const [alertaPrazos, setAlertaPrazos] = useState(false);
 
   const [, forcarRender] = useReducer(x => x + 1, 0);
   const campoRapido = useRef(null);
@@ -81,6 +90,36 @@ export default function DashboardClient({ email, ehAdmin }) {
       setConfig(resp.ok ? { ...CONFIG_PADRAO, ...corpo.config } : { ...CONFIG_PADRAO });
     })();
   }, []);
+
+  // as tarefas do quadro alimentam a fila de lançamento rápido e o alerta de
+  // prazo; carregam uma vez só — o quadro é gerenciado na tela dele mesmo
+  useEffect(() => {
+    (async () => {
+      const resp = await fetch('/api/tarefas');
+      const corpo = await resp.json().catch(() => ({}));
+      if (resp.ok) setTarefas(corpo.tarefas || []);
+      setTarefasCarregadas(true);
+    })();
+  }, []);
+
+  const pendentes = useMemo(
+    () => (dia ? ordenarPorUrgencia(tarefas, hojeISO()) : []),
+    [tarefas, dia]
+  );
+  const comPrazo = useMemo(() => pendentes.filter(p => p.prazoClasse), [pendentes]);
+
+  // um aviso por dia, não um por visita: sem isso, ir e voltar do quadro
+  // reabriria o alerta a cada navegação de volta ao diário
+  useEffect(() => {
+    if (!tarefasCarregadas || !comPrazo.length) return;
+    const chave = `apontei-alerta-prazo-${hojeISO()}`;
+    let jaMostrado = false;
+    try {
+      jaMostrado = !!sessionStorage.getItem(chave);
+      if (!jaMostrado) sessionStorage.setItem(chave, '1');
+    } catch (e) { /* modo privado: sem persistência, mostra sempre */ }
+    if (!jaMostrado) setAlertaPrazos(true);
+  }, [tarefasCarregadas, comPrazo.length]);
 
   const carregar = useCallback(async () => {
     if (!dias.length) return;
@@ -173,6 +212,31 @@ export default function DashboardClient({ email, ehAdmin }) {
     if (!ativa) return iniciarAtividade(texto);
     const linha = `${agoraHM()} · ${texto}`;
     await alterar(ativa.id, { descricao: ativa.descricao ? `${ativa.descricao}\n${linha}` : linha });
+  }
+
+  /**
+   * Lançamento rápido a partir de uma tarefa do quadro: encerra a atividade
+   * aberta (se houver) e começa uma nova já com chamado/projeto herdados do
+   * cartão. O cartão continua no quadro — apontar e concluir são coisas
+   * separadas, igual no quadro.
+   */
+  async function lancarTarefa(tarefa) {
+    const anterior = ativa;
+    if (anterior) await encerrarAtividade();
+    const hora = agoraHM();
+    setDia(hojeISO());
+    const novo = await criar({
+      data: hojeISO(),
+      inicio: hora,
+      descricao: `${hora} · ${tarefa.titulo}`,
+      chamado: tarefa.chamado || '',
+      projeto: tarefa.projeto || (anterior ? anterior.projeto : ''),
+      categoria: config?.categorias?.[0] || ''
+    });
+    if (novo) {
+      setAlertaPrazos(false);
+      mostrarAviso(`Iniciado: ${tarefa.titulo}`);
+    }
   }
 
   function ajustarAltura(el) {
@@ -400,7 +464,9 @@ export default function DashboardClient({ email, ehAdmin }) {
   }
 
   async function sair() {
+    setSaindo(true);
     await supabaseNavegador().auth.signOut();
+    avisarNavegacao();
     router.push('/login');
     router.refresh();
   }
@@ -463,30 +529,35 @@ export default function DashboardClient({ email, ehAdmin }) {
             <Icone nome="direita" tamanho={16} />
           </button>
           <span className="cab__rotulo">{rotuloDoPeriodo(dia, modo)}</span>
-          <button className="btn"
+          <button className="btn" title="Ir para hoje"
                   onClick={() => { setDia(hojeISO()); setAbertos(new Set()); }}>
-            <Icone nome="calendario" tamanho={15} />Hoje
+            <Icone nome="calendario" tamanho={15} /><span className="rotulo-btn">Hoje</span>
           </button>
         </div>
 
         <div className="cab__acoes">
-          <button className="btn" onClick={() => setManual({ ...MANUAL_VAZIO, data: dia })}>
-            <Icone nome="mais" tamanho={15} />Lançar
+          <button className="btn" title="Lançar manualmente"
+                  onClick={() => setManual({ ...MANUAL_VAZIO, data: dia })}>
+            <Icone nome="mais" tamanho={15} /><span className="rotulo-btn">Lançar</span>
           </button>
-          <button className="btn" onClick={() => setAjustes(true)}>
-            <Icone nome="ajustes" tamanho={15} />Ajustes
+          <button className="btn" title="Ajustes" onClick={() => setAjustes(true)}>
+            <Icone nome="ajustes" tamanho={15} /><span className="rotulo-btn">Ajustes</span>
           </button>
-          <Link className="btn" href="/kanban">
-            <Icone nome="colunas" tamanho={15} />Quadro
+          <Link className="btn" href="/kanban" title="Quadro">
+            <Icone nome="colunas" tamanho={15} /><span className="rotulo-btn">Quadro</span>
           </Link>
           {ehAdmin && (
-            <Link className="btn" href="/admin/usuarios">
-              <Icone nome="usuarios" tamanho={15} />Usuários
+            <Link className="btn" href="/admin/usuarios" title="Usuários">
+              <Icone nome="usuarios" tamanho={15} /><span className="rotulo-btn">Usuários</span>
             </Link>
           )}
           <TemaBotao />
-          <button className="btn btn--icone" onClick={sair} title="Sair da conta" aria-label="Sair da conta">
-            <Icone nome="sair" tamanho={16} />
+          <button
+            className="btn btn--icone" onClick={sair} disabled={saindo}
+            title={saindo ? 'Saindo…' : 'Sair da conta'}
+            aria-label={saindo ? 'Saindo da conta' : 'Sair da conta'}
+          >
+            {saindo ? <span className="giro" /> : <Icone nome="sair" tamanho={16} />}
           </button>
         </div>
       </header>
@@ -582,6 +653,8 @@ export default function DashboardClient({ email, ehAdmin }) {
           )}
         </p>
       </section>
+
+      <Pendencias itens={pendentes} aoApontar={lancarTarefa} />
 
       <Regua
         lancamentos={doPeriodo}
@@ -715,6 +788,14 @@ export default function DashboardClient({ email, ehAdmin }) {
             </button>
           </div>
         </Dialogo>
+      )}
+
+      {alertaPrazos && (
+        <AlertaPrazos
+          itens={comPrazo}
+          aoFechar={() => setAlertaPrazos(false)}
+          aoApontar={lancarTarefa}
+        />
       )}
 
       <div className={'aviso-copia' + (aviso ? ' mostra' : '')} role="status" aria-live="polite">

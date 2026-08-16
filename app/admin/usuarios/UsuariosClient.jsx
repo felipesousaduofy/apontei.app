@@ -85,11 +85,15 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
         <span className="rotulo">Usuários</span>
         <span className="email">{email}</span>
         <div className="acoes">
-          <button className="btn btn--mini" onClick={atualizarLista} disabled={atualizando}>
-            <Icone nome="relogio" tamanho={14} />{atualizando ? 'Atualizando…' : 'Atualizar'}
+          <button
+            className="btn btn--mini" onClick={atualizarLista} disabled={atualizando}
+            title="Atualizar lista"
+          >
+            {atualizando ? <span className="giro" /> : <Icone nome="relogio" tamanho={14} />}
+            <span className="rotulo-btn">{atualizando ? 'Atualizando…' : 'Atualizar'}</span>
           </button>
-          <Link className="btn btn--mini" href="/dashboard">
-            <Icone nome="esquerda" tamanho={14} />Voltar
+          <Link className="btn btn--mini" href="/dashboard" title="Voltar">
+            <Icone nome="esquerda" tamanho={14} /><span className="rotulo-btn">Voltar</span>
           </Link>
           <TemaBotao />
         </div>

@@ -227,7 +227,7 @@ textarea.campo{resize:vertical;line-height:1.5}
 .cracha--ativo{background:var(--ok-claro);border-color:var(--ok-borda);color:var(--ok)}
 .cracha--inativo{background:var(--lacuna-claro);border-color:var(--lacuna-borda);color:var(--lacuna)}
 .cracha--alta{background:var(--perigo-claro);border-color:var(--perigo-borda);color:var(--perigo)}
-.cracha--media{background:var(--lacuna-claro);border-color:var(--lacuna-borda);color:var(--lacuna)}
+.cracha--media,.cracha--proxima{background:var(--lacuna-claro);border-color:var(--lacuna-borda);color:var(--lacuna)}
 .cracha--baixa{background:var(--ficha-alt);border-color:var(--linha);color:var(--tinta-fraca)}
 .cracha--prazo{background:var(--ficha);border-color:var(--linha-forte);color:var(--tinta-fraca)}
 .cracha--atrasada{background:var(--perigo-claro);border-color:var(--perigo-borda);color:var(--perigo)}
@@ -440,6 +440,32 @@ a.btn{text-decoration:none;color:inherit}
 .captura .dica{margin:8px 2px 0}
 
 /* ============================================================
+   fila do quadro — lançamento rápido a partir das tarefas pendentes
+   ============================================================ */
+.pendencias{padding:16px 20px 0}
+.pendencias__cab{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.pendencias__meta{font-size:12px;color:var(--tinta-fantasma)}
+.pendencias__lista{display:flex;gap:8px;flex-wrap:wrap}
+
+.pendencia{
+  position:relative;overflow:hidden;max-width:280px;
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--ficha);border:1px solid var(--linha-forte);
+  border-radius:var(--r-pilula);padding:7px 14px 7px 16px;
+  cursor:pointer;font-size:13px;font-family:var(--fonte-corpo);text-decoration:none;color:inherit;
+  box-shadow:var(--e-1);
+  transition:box-shadow var(--mov-rapido),transform var(--mov-rapido),border-color var(--mov-rapido);
+}
+.pendencia::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--cor-cartao,var(--linha-forte));
+}
+.pendencia:hover{box-shadow:var(--e-2);transform:translateY(-1px);border-color:var(--carimbo)}
+.pendencia__titulo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.pendencia--mais{color:var(--tinta-fraca);font-weight:600}
+.pendencia--mais:hover{color:var(--carimbo)}
+
+/* ============================================================
    régua
    ============================================================ */
 .regua{padding:22px 20px 0}
@@ -480,6 +506,19 @@ a.btn{text-decoration:none;color:inherit}
 .vazio__rot{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   color:var(--lacuna);font-size:10px;font-family:var(--fonte-num);white-space:nowrap;
+}
+
+/* intervalo combinado (ex.: almoço): visualmente distinto da lacuna — não é
+   "tempo sem registro", é tempo que não deveria ter registro */
+.descanso{
+  position:absolute;top:7px;bottom:7px;pointer-events:none;
+  background:repeating-linear-gradient(-45deg,var(--ficha) 0 6px,var(--linha) 6px 12px);
+  border:1px solid var(--linha-forte);border-radius:3px;
+}
+.descanso__rot{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--tinta-fraca);font-size:10px;font-family:var(--fonte-rotulo);
+  font-weight:600;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;
 }
 .regua__horas{display:flex;margin-top:5px;position:relative;height:14px}
 .regua__hora{
@@ -668,6 +707,28 @@ a.btn{text-decoration:none;color:inherit}
 .vazio-msg{padding:26px 16px;text-align:center;color:var(--tinta-fantasma);font-size:14px}
 
 /* ============================================================
+   progresso de navegação
+   ============================================================ */
+.progresso{
+  position:fixed;top:0;left:0;right:0;height:3px;z-index:100;pointer-events:none;
+}
+.progresso i{
+  display:block;height:100%;background:var(--carimbo);
+  border-radius:0 var(--r-pilula) var(--r-pilula) 0;
+  box-shadow:0 0 8px var(--carimbo),0 0 3px var(--carimbo);
+  transition:width 180ms ease-out,opacity 260ms ease-out;
+}
+
+/* girinho de "estou trabalhando" dentro do botão */
+.giro{
+  width:14px;height:14px;flex:none;border-radius:50%;
+  border:2px solid currentColor;border-top-color:transparent;
+  animation:girar .7s linear infinite;
+}
+.btn--mini .giro{width:12px;height:12px}
+@keyframes girar{to{transform:rotate(360deg)}}
+
+/* ============================================================
    esqueleto de carregamento
    ============================================================ */
 .esqueleto{
@@ -788,6 +849,10 @@ dialog::backdrop{background:rgba(10,13,11,.5)}
 }
 .dlg__pe .btn--forte{margin-left:auto}
 .bloco-campo{margin-bottom:14px}
+.chip-opcao{
+  display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--t-sm);
+}
+.chip-opcao input{accent-color:var(--carimbo);width:16px;height:16px;flex:none}
 .ajuda{font-size:12px;color:var(--tinta-fantasma);margin-top:4px}
 .divisor{border:0;border-top:1px solid var(--linha);margin:18px 0}
 .arquivo-caixa{
@@ -806,6 +871,14 @@ dialog::backdrop{background:rgba(10,13,11,.5)}
 }
 .perg-detalhe__desc{font-size:14px;white-space:pre-wrap;max-height:120px;overflow:auto}
 .perg-aviso{margin:12px 0 0;font-size:var(--t-sm);color:var(--tinta-fraca)}
+
+.lista-alerta{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.lista-alerta__item{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  border:1px solid var(--linha);background:var(--ficha-alt);
+  border-radius:var(--r);padding:8px 10px;
+}
+.lista-alerta__titulo{flex:1;min-width:120px;font-size:var(--t-sm);overflow-wrap:anywhere}
 
 .aviso-copia{
   position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(10px);
@@ -826,6 +899,39 @@ dialog::backdrop{background:rgba(10,13,11,.5)}
   .ativo__meta{margin-left:0;width:100%}
   .grade--4{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* telefone em pé: os cabeçalhos de página deixam de caber texto + ícone em
+   cada botão de ação — os rótulos saem de vista mas continuam lidos por
+   leitor de tela (technique sr-only, não display:none) */
+@media (max-width:720px){
+  .cab__acoes .rotulo-btn,
+  .topo .acoes .rotulo-btn{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
+  .cab__acoes .btn,
+  .topo .acoes .btn{padding:9px;gap:0}
+  .cab__rotulo{display:none}
+}
+
+@media (max-width:680px){
+  /* a caixa de captura vira duas linhas: texto em cima, ações embaixo em
+     largura total — do jeito que estava, os botões espremiam o textarea */
+  .entrada{flex-wrap:wrap}
+  .entrada textarea{flex:1 1 100%}
+  .entrada__acoes{flex:1 1 100%}
+  .entrada__acoes .btn{flex:1;justify-content:center}
+
+  /* régua da semana: rótulo do dia e total brigam por espaço com a trilha —
+     encolhe os dois lados fixos para sobrar mais faixa de fato */
+  .faixa{gap:6px}
+  .faixa__rot{width:52px;gap:2px}
+  .faixa__nome{font-size:11px}
+  .faixa__num{font-size:10px}
+  .faixa__total{width:40px;font-size:12px}
+  .regua__horas--semana{margin-left:58px;margin-right:46px}
+}
+
 @media (max-width:560px){
   .cab{padding:10px 14px}
   .captura,.regua,.corpo,.resumo{padding-left:14px;padding-right:14px}
@@ -834,6 +940,12 @@ dialog::backdrop{background:rgba(10,13,11,.5)}
   .resumo{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .kpi__valor{font-size:var(--t-lg)}
   .ativo__crono{font-size:var(--t-lg)}
+}
+
+/* tabela de usuários: a coluna de cadastro é a menos essencial pra decidir
+   uma ação — sai primeiro pra tabela não obrigar rolagem horizontal cedo */
+@media (max-width:640px){
+  .tabela th:nth-child(2),.tabela td:nth-child(2){display:none}
 }
 
 /* toque: 44x44 de alvo real — só aumentar o padding não chega lá — e nada
@@ -846,9 +958,21 @@ dialog::backdrop{background:rgba(10,13,11,.5)}
   .lanc__sel{padding:0 0 0 14px;min-width:44px;min-height:44px}
   .lanc__sel input{width:20px;height:20px}
   .cartao-acoes .btn--mini{min-height:36px;padding:7px 10px}
+  .pendencia{min-height:44px;padding-top:9px;padding-bottom:9px}
+  .lista-alerta__item .btn--mini{min-height:38px}
   /* o hover não existe no toque: a faixa da categoria fica no estado fixo */
   .lanc:hover::before{width:3px}
   .cartao:hover{transform:none}
+
+  /* abaixo de 16px o Safari do iPhone dá zoom automático ao focar o campo —
+     por isso os controles de formulário ganham piso de 16px só no toque,
+     mantendo o tamanho mais compacto de quem usa mouse */
+  .campo,
+  .cab__dia input[type=date],
+  .ativo__meta input,.ativo__meta select,
+  .entrada textarea{
+    font-size:16px;
+  }
 }
 
 @media (prefers-reduced-motion:reduce){

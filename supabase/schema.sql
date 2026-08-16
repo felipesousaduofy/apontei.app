@@ -49,8 +49,17 @@ create table if not exists public.config (
   separador          text not null default '; ',
   template           text not null default '{chamado} | {projeto} | {horas}' || chr(10) || '{descricao}',
   projetos           text[] not null default '{}',
-  categorias         text[] not null default array['Desenvolvimento','Reunião','Suporte','Análise','Deploy','Documentação','Outros']
+  categorias         text[] not null default array['Desenvolvimento','Reunião','Suporte','Análise','Deploy','Documentação','Outros'],
+  intervalo_ativo    boolean not null default false,
+  intervalo_inicio   time not null default '12:00',
+  intervalo_fim      time not null default '13:00'
 );
+
+-- quem já tinha a tabela antes deste intervalo existir: adiciona as colunas
+-- sem perder o resto. Rodar de novo não faz mal.
+alter table public.config add column if not exists intervalo_ativo boolean not null default false;
+alter table public.config add column if not exists intervalo_inicio time not null default '12:00';
+alter table public.config add column if not exists intervalo_fim time not null default '13:00';
 
 -- ---------------------------------------------------------------
 -- tarefas: cartões do quadro Kanban

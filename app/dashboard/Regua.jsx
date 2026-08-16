@@ -1,16 +1,35 @@
 'use client';
 import {
   calcularLacunas, corCategoria, dataCurta, doDia, duracaoMin, hmParaMin,
-  hojeISO, janelaDoDia, minParaHM, minutosAgora, nomeCurtoDoDia, primeiraLinha
+  hojeISO, intervaloDescanso, janelaDoDia, minParaHM, minutosAgora,
+  nomeCurtoDoDia, primeiraLinha
 } from '@/lib/apontamento';
 
 function Faixa({ dia, itens, janela, config, ehUnico, aoClicarLacuna, aoClicarBloco }) {
   const largura = janela.fim - janela.ini;
   const pos = m => ((m - janela.ini) / largura) * 100;
   const lacunas = calcularLacunas(itens, janela, dia, config);
+  const descanso = intervaloDescanso(config);
 
   return (
     <>
+      {descanso && (() => {
+        const ini = Math.max(janela.ini, descanso[0]);
+        const fim = Math.min(janela.fim, descanso[1]);
+        if (fim <= ini) return null;
+        return (
+          <div
+            className="descanso"
+            style={{ left: `${pos(ini)}%`, width: `${pos(fim) - pos(ini)}%` }}
+            title={`Intervalo de descanso combinado: ${minParaHM(descanso[0])}–${minParaHM(descanso[1])} — não conta como horas sem registro`}
+          >
+            <span className="descanso__rot">
+              {fim - ini >= 40 && ehUnico ? 'Descanso' : ''}
+            </span>
+          </div>
+        );
+      })()}
+
       {lacunas.map(([a, b]) => (
         <button
           key={`lacuna-${a}`}

@@ -54,6 +54,7 @@ export default function Signup() {
               value={senha} onChange={e => setSenha(e.target.value)} />
           </div>
           <button className="btn btn--forte btn--largo" type="submit" disabled={enviando}>
+            {enviando && <span className="giro" />}
             {enviando ? 'Criando…' : 'Criar conta'}
           </button>
         </form>

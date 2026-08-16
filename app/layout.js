@@ -1,4 +1,5 @@
 import './globals.css';
+import Progresso from './Progresso';
 
 export const metadata = {
   title: 'apontei.',
@@ -33,7 +34,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <Progresso />
+        {children}
+      </body>
     </html>
   );
 }

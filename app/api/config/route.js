@@ -4,7 +4,8 @@ import { CONFIG_PADRAO } from '@/lib/apontamento';
 
 const CAMPOS = [
   'arredondamento', 'inicio_dia', 'fim_dia', 'limite_caracteres',
-  'separador', 'template', 'projetos', 'categorias'
+  'separador', 'template', 'projetos', 'categorias',
+  'intervalo_ativo', 'intervalo_inicio', 'intervalo_fim'
 ];
 
 export async function GET() {
@@ -49,6 +50,8 @@ export async function PATCH(req) {
       alteracoes[campo] = corpo[campo].map(v => String(v).trim()).filter(Boolean);
     } else if (campo === 'arredondamento' || campo === 'limite_caracteres') {
       alteracoes[campo] = Number(corpo[campo]) || 0;
+    } else if (campo === 'intervalo_ativo') {
+      alteracoes[campo] = !!corpo[campo];
     } else {
       alteracoes[campo] = corpo[campo];
     }

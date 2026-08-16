@@ -121,7 +121,8 @@ export default function DialogoManual({ inicial, config, aoFechar, aoSalvar, aoE
             </button>
           )}
           <button type="submit" className="btn btn--forte" disabled={salvando}>
-            <Icone nome="seleciona" tamanho={15} />{salvando ? 'Salvando…' : 'Salvar lançamento'}
+            {salvando ? <span className="giro" /> : <Icone nome="seleciona" tamanho={15} />}
+            {salvando ? 'Salvando…' : 'Salvar lançamento'}
           </button>
         </div>
       </form>

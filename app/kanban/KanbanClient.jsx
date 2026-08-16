@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Marca from '../Marca';
 import Icone from '../Icone';
 import TemaBotao from '../TemaBotao';
-import { COLUNAS, IDS_COLUNAS, PRIORIDADES, ordemEntre } from '@/lib/kanban';
+import { COLUNAS, IDS_COLUNAS, PRIORIDADES, classificarPrazo, ordemEntre } from '@/lib/kanban';
 
 // a faixa lateral do cartão: prioridade num relance, sem depender de ler o crachá
 const COR_PRIORIDADE = {
@@ -37,7 +37,7 @@ function dataCurta(iso) {
  * de um arraste e cancelaria o gesto.
  */
 function Cartao({ tarefa, colunaId, arrastando, hoje, aoArrastar, aoEncerrar, aoPassarPorCima, aoSoltar, aoMover, aoApontar, aoAbrir }) {
-  const atrasada = hoje && tarefa.prazo && tarefa.prazo < hoje && tarefa.coluna !== 'concluido';
+  const prazoClasse = hoje ? classificarPrazo(tarefa, hoje) : null;
   const concluida = tarefa.coluna === 'concluido';
   const posicao = IDS_COLUNAS.indexOf(colunaId);
 
@@ -74,8 +74,8 @@ function Cartao({ tarefa, colunaId, arrastando, hoje, aoArrastar, aoEncerrar, ao
           </span>
         )}
         {tarefa.prazo && (
-          <span className={'cracha cracha--prazo' + (atrasada ? ' cracha--atrasada' : '')}>
-            {atrasada ? 'Venceu ' : 'Até '}{dataCurta(tarefa.prazo)}
+          <span className={'cracha cracha--prazo' + (prazoClasse ? ` cracha--${prazoClasse === 'vencida' ? 'atrasada' : 'proxima'}` : '')}>
+            {prazoClasse === 'vencida' ? 'Venceu ' : 'Até '}{dataCurta(tarefa.prazo)}
           </span>
         )}
       </div>
@@ -329,12 +329,12 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
         <span className="rotulo">Quadro</span>
         <span className="email">{email}</span>
         <div className="acoes">
-          <Link className="btn btn--mini" href="/dashboard">
-            <Icone nome="relogio" tamanho={14} />Apontamentos
+          <Link className="btn btn--mini" href="/dashboard" title="Apontamentos">
+            <Icone nome="relogio" tamanho={14} /><span className="rotulo-btn">Apontamentos</span>
           </Link>
           {ehAdmin && (
-            <Link className="btn btn--mini" href="/admin/usuarios">
-              <Icone nome="usuarios" tamanho={14} />Usuários
+            <Link className="btn btn--mini" href="/admin/usuarios" title="Usuários">
+              <Icone nome="usuarios" tamanho={14} /><span className="rotulo-btn">Usuários</span>
             </Link>
           )}
           <TemaBotao />
@@ -369,7 +369,8 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
           {PRIORIDADES.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </select>
         <button className="btn btn--forte" type="submit" disabled={criando}>
-          <Icone nome="mais" tamanho={15} />{criando ? 'Criando…' : 'Adicionar'}
+          {criando ? <span className="giro" /> : <Icone nome="mais" tamanho={15} />}
+          {criando ? 'Criando…' : 'Adicionar'}
         </button>
       </form>
 
@@ -525,7 +526,8 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
                 Cancelar
               </button>
               <button className="btn btn--forte" type="submit" disabled={salvandoEdicao}>
-                <Icone nome="seleciona" tamanho={15} />{salvandoEdicao ? 'Salvando…' : 'Salvar'}
+                {salvandoEdicao ? <span className="giro" /> : <Icone nome="seleciona" tamanho={15} />}
+                {salvandoEdicao ? 'Salvando…' : 'Salvar'}
               </button>
             </div>
           </form>

@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import Dialogo from './Dialogo';
 import Icone from '../Icone';
-import { CONFIG_PADRAO } from '@/lib/apontamento';
+import { CONFIG_PADRAO, hmParaMin } from '@/lib/apontamento';
 
 export default function DialogoAjustes({
   config, aoFechar, aoSalvar, aoExportarCsv, aoExportarJson, aoImportar, aoApagarTudo
@@ -13,6 +13,7 @@ export default function DialogoAjustes({
     categorias: (config.categorias || []).join('\n')
   });
   const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
   const arquivo = useRef(null);
 
   function mudar(campo, valor) {
@@ -24,6 +25,14 @@ export default function DialogoAjustes({
   }
 
   async function salvar() {
+    if (
+      form.intervalo_ativo &&
+      hmParaMin(form.intervalo_fim) <= hmParaMin(form.intervalo_inicio)
+    ) {
+      setErro('O fim do intervalo de descanso precisa ser depois do início.');
+      return;
+    }
+    setErro('');
     setSalvando(true);
     await aoSalvar({
       arredondamento: Number(form.arredondamento),
@@ -33,7 +42,10 @@ export default function DialogoAjustes({
       template: form.template,
       separador: form.separador || '; ',
       projetos: linhas(form.projetos),
-      categorias: linhas(form.categorias).length ? linhas(form.categorias) : CONFIG_PADRAO.categorias
+      categorias: linhas(form.categorias).length ? linhas(form.categorias) : CONFIG_PADRAO.categorias,
+      intervalo_ativo: !!form.intervalo_ativo,
+      intervalo_inicio: form.intervalo_inicio || '12:00',
+      intervalo_fim: form.intervalo_fim || '13:00'
     });
     setSalvando(false);
   }
@@ -51,6 +63,8 @@ export default function DialogoAjustes({
       </div>
 
       <div className="dlg__corpo">
+        {erro && <div className="erro-auth">{erro}</div>}
+
         <div className="grade grade--4" style={{ marginBottom: 14 }}>
           <div>
             <span className="rotulo campo-rot">Arredondar</span>
@@ -86,6 +100,41 @@ export default function DialogoAjustes({
               onChange={e => mudar('limite_caracteres', e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="bloco-campo">
+          <label className="chip-opcao">
+            <input
+              type="checkbox" checked={!!form.intervalo_ativo}
+              onChange={e => mudar('intervalo_ativo', e.target.checked)}
+            />
+            Descontar um intervalo de descanso das horas sem registro
+          </label>
+          {form.intervalo_ativo && (
+            <div className="grade" style={{ marginTop: 9 }}>
+              <div>
+                <span className="rotulo campo-rot">Das</span>
+                <input
+                  type="time" className="campo"
+                  value={String(form.intervalo_inicio || '12:00').slice(0, 5)}
+                  onChange={e => mudar('intervalo_inicio', e.target.value)}
+                />
+              </div>
+              <div>
+                <span className="rotulo campo-rot">Até</span>
+                <input
+                  type="time" className="campo"
+                  value={String(form.intervalo_fim || '13:00').slice(0, 5)}
+                  onChange={e => mudar('intervalo_fim', e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          <p className="ajuda">
+            Ex.: almoço combinado das 12h às 14h. Esse período some da régua e do
+            cálculo de "sem registro" — a jornada esperada também é reduzida na
+            mesma quantidade, então ninguém precisa apontar o horário do almoço.
+          </p>
         </div>
 
         <div className="bloco-campo">
@@ -162,7 +211,8 @@ export default function DialogoAjustes({
 
       <div className="dlg__pe">
         <button className="btn btn--forte" onClick={salvar} disabled={salvando}>
-          <Icone nome="seleciona" tamanho={15} />{salvando ? 'Salvando…' : 'Salvar ajustes'}
+          {salvando ? <span className="giro" /> : <Icone nome="seleciona" tamanho={15} />}
+          {salvando ? 'Salvando…' : 'Salvar ajustes'}
         </button>
       </div>
     </Dialogo>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Marca from '../Marca';
+import { avisarNavegacao } from '../Progresso';
 import { supabaseNavegador } from '@/lib/supabase/client';
 
 export default function Login() {
@@ -11,7 +12,9 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
-  const [enviando, setEnviando] = useState(false);
+  // '' = parado · 'verificando' = conferindo a senha · 'abrindo' = montando o diário
+  const [etapa, setEtapa] = useState('');
+  const enviando = etapa !== '';
 
   // quem foi desativado é mandado para cá pelo middleware; encerra a sessão
   // que sobrou no navegador e explica o que aconteceu.
@@ -25,10 +28,11 @@ export default function Login() {
   async function entrar(e) {
     e.preventDefault();
     setErro('');
-    setEnviando(true);
+    setEtapa('verificando');
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-    setEnviando(false);
+
     if (error) {
+      setEtapa('');
       if (error.message === 'Invalid login credentials') {
         setErro('E-mail ou senha incorretos.');
       } else if (/banned/i.test(error.message)) {
@@ -38,6 +42,12 @@ export default function Login() {
       }
       return;
     }
+
+    // deu certo: a etapa continua ligada de propósito. Montar o dashboard é
+    // outra ida ao servidor, e zerar aqui devolvia o botão para "Entrar" com a
+    // tela ainda parada — era isso que parecia travamento.
+    setEtapa('abrindo');
+    avisarNavegacao();
     router.push('/dashboard');
     router.refresh();
   }
@@ -60,7 +70,10 @@ export default function Login() {
               value={senha} onChange={e => setSenha(e.target.value)} />
           </div>
           <button className="btn btn--forte btn--largo" type="submit" disabled={enviando}>
-            {enviando ? 'Entrando…' : 'Entrar'}
+            {enviando && <span className="giro" />}
+            {etapa === 'abrindo' ? 'Abrindo seu diário…'
+              : etapa === 'verificando' ? 'Verificando…'
+              : 'Entrar'}
           </button>
         </form>
         <p className="rodape-auth">Ainda não tem conta? <Link href="/signup">Cadastre-se</Link></p>
