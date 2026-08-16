@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { supabaseServidor } from '@/lib/supabase/server';
+import { exigirUsuario } from '@/lib/supabase/sessao';
 
 const CAMPOS_PERMITIDOS = ['data', 'inicio', 'fim', 'descricao', 'projeto', 'chamado', 'categoria', 'obs'];
 
 export async function PATCH(req, { params }) {
-  const supabase = supabaseServidor();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ erro: 'não autenticado' }, { status: 401 });
+  const guarda = await exigirUsuario();
+  if (guarda.resposta) return guarda.resposta;
+  const { supabase, user } = guarda;
 
   const corpo = await req.json();
   const alteracoes = {};
@@ -29,9 +29,9 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  const supabase = supabaseServidor();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ erro: 'não autenticado' }, { status: 401 });
+  const guarda = await exigirUsuario();
+  if (guarda.resposta) return guarda.resposta;
+  const { supabase, user } = guarda;
 
   const { error } = await supabase
     .from('lancamentos')

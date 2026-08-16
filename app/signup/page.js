@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import Marca from '../Marca';
 import { supabaseNavegador } from '@/lib/supabase/client';
 
 export default function Signup() {
@@ -26,7 +27,7 @@ export default function Signup() {
     return (
       <main className="pagina-auth">
         <div className="cartao-auth">
-          <h1>apontei<span className="marca-ponto">.</span></h1>
+          <Marca altura={46} />
           <p className="sub">Quase lá.</p>
           <p>Enviamos um link de confirmação para <strong>{email}</strong>. Abra o e-mail e confirme para poder entrar.</p>
           <p className="rodape-auth"><Link href="/login">Voltar para o login</Link></p>
@@ -38,7 +39,7 @@ export default function Signup() {
   return (
     <main className="pagina-auth">
       <div className="cartao-auth">
-        <h1>apontei<span className="marca-ponto">.</span></h1>
+        <Marca altura={46} />
         <p className="sub">Crie sua conta para começar a apontar.</p>
         {erro && <div className="erro-auth">{erro}</div>}
         <form onSubmit={cadastrar}>

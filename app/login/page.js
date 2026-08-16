@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Marca from '../Marca';
 import { supabaseNavegador } from '@/lib/supabase/client';
 
 export default function Login() {
@@ -12,6 +13,15 @@ export default function Login() {
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
 
+  // quem foi desativado é mandado para cá pelo middleware; encerra a sessão
+  // que sobrou no navegador e explica o que aconteceu.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('motivo') !== 'inativo') return;
+    setErro('Sua conta foi desativada. Fale com um administrador do apontei.');
+    supabaseNavegador().auth.signOut();
+  }, []);
+
   async function entrar(e) {
     e.preventDefault();
     setErro('');
@@ -19,9 +29,13 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
     setEnviando(false);
     if (error) {
-      setErro(error.message === 'Invalid login credentials'
-        ? 'E-mail ou senha incorretos.'
-        : 'Não foi possível entrar. Tente novamente.');
+      if (error.message === 'Invalid login credentials') {
+        setErro('E-mail ou senha incorretos.');
+      } else if (/banned/i.test(error.message)) {
+        setErro('Sua conta foi desativada. Fale com um administrador do apontei.');
+      } else {
+        setErro('Não foi possível entrar. Tente novamente.');
+      }
       return;
     }
     router.push('/dashboard');
@@ -31,7 +45,7 @@ export default function Login() {
   return (
     <main className="pagina-auth">
       <div className="cartao-auth">
-        <h1>apontei<span className="marca-ponto">.</span></h1>
+        <Marca altura={46} />
         <p className="sub">Entre com sua conta da equipe.</p>
         {erro && <div className="erro-auth">{erro}</div>}
         <form onSubmit={entrar}>

@@ -1,14 +1,35 @@
 import { NextResponse } from 'next/server';
-import { supabaseServidor } from '@/lib/supabase/server';
+import { exigirUsuario } from '@/lib/supabase/sessao';
 
+function limpar(corpo, userId) {
+  return {
+    user_id: userId,
+    data: corpo.data,
+    inicio: corpo.inicio,
+    fim: corpo.fim || null,
+    descricao: corpo.descricao || '',
+    projeto: corpo.projeto || '',
+    chamado: corpo.chamado || '',
+    categoria: corpo.categoria || '',
+    obs: corpo.obs || ''
+  };
+}
+
+/**
+ * GET /api/lancamentos?de=&ate=&abertos=1
+ * `abertos=1` traz junto as atividades ainda em andamento, mesmo que sejam de
+ * antes do período pedido — senão um cronômetro esquecido na sexta some da tela
+ * na segunda.
+ */
 export async function GET(req) {
-  const supabase = supabaseServidor();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ erro: 'não autenticado' }, { status: 401 });
+  const guarda = await exigirUsuario();
+  if (guarda.resposta) return guarda.resposta;
+  const { supabase } = guarda;
 
   const url = new URL(req.url);
-  const de = url.searchParams.get('de');   // data inicial (YYYY-MM-DD)
-  const ate = url.searchParams.get('ate'); // data final, inclusive
+  const de = url.searchParams.get('de');
+  const ate = url.searchParams.get('ate');
+  const incluirAbertos = url.searchParams.get('abertos') === '1';
 
   let query = supabase.from('lancamentos').select('*').order('data').order('inicio');
   if (de) query = query.gte('data', de);
@@ -16,35 +37,102 @@ export async function GET(req) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
-  return NextResponse.json({ lancamentos: data });
+
+  let lancamentos = data;
+
+  if (incluirAbertos) {
+    const { data: abertos, error: erroAbertos } = await supabase
+      .from('lancamentos')
+      .select('*')
+      .is('fim', null);
+
+    if (erroAbertos) return NextResponse.json({ erro: erroAbertos.message }, { status: 500 });
+
+    const porId = new Map(lancamentos.map(l => [l.id, l]));
+    abertos.forEach(l => porId.set(l.id, l));
+    lancamentos = [...porId.values()].sort((a, b) =>
+      (a.data + a.inicio).localeCompare(b.data + b.inicio));
+  }
+
+  return NextResponse.json({ lancamentos });
 }
 
+/**
+ * POST /api/lancamentos
+ * Aceita um lançamento só, ou `{ lancamentos: [...] }` para importar um backup
+ * do apontei local. Na importação, pares data+início que já existem são
+ * ignorados, para reimportar o mesmo arquivo não duplicar nada.
+ */
 export async function POST(req) {
-  const supabase = supabaseServidor();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ erro: 'não autenticado' }, { status: 401 });
+  const guarda = await exigirUsuario();
+  if (guarda.resposta) return guarda.resposta;
+  const { supabase, user } = guarda;
 
   const corpo = await req.json();
+
+  if (Array.isArray(corpo.lancamentos)) {
+    const validos = corpo.lancamentos.filter(l => l && l.data && l.inicio);
+    if (validos.length === 0) {
+      return NextResponse.json({ erro: 'nenhum lançamento válido no arquivo' }, { status: 400 });
+    }
+
+    const datas = [...new Set(validos.map(l => l.data))];
+    const { data: existentes, error: erroExistentes } = await supabase
+      .from('lancamentos')
+      .select('data, inicio')
+      .in('data', datas);
+
+    if (erroExistentes) {
+      return NextResponse.json({ erro: erroExistentes.message }, { status: 500 });
+    }
+
+    const jaTem = new Set(existentes.map(l => `${l.data}|${String(l.inicio).slice(0, 5)}`));
+    const novos = validos
+      .filter(l => !jaTem.has(`${l.data}|${String(l.inicio).slice(0, 5)}`))
+      .map(l => limpar(l, user.id));
+
+    if (novos.length === 0) {
+      return NextResponse.json({ importados: 0, ignorados: validos.length });
+    }
+
+    const { data, error } = await supabase.from('lancamentos').insert(novos).select();
+    if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+
+    return NextResponse.json(
+      { lancamentos: data, importados: data.length, ignorados: validos.length - data.length },
+      { status: 201 }
+    );
+  }
+
   if (!corpo.data || !corpo.inicio) {
     return NextResponse.json({ erro: 'informe pelo menos data e início' }, { status: 400 });
   }
 
   const { data, error } = await supabase
     .from('lancamentos')
-    .insert({
-      user_id: user.id,
-      data: corpo.data,
-      inicio: corpo.inicio,
-      fim: corpo.fim || null,
-      descricao: corpo.descricao || '',
-      projeto: corpo.projeto || '',
-      chamado: corpo.chamado || '',
-      categoria: corpo.categoria || '',
-      obs: corpo.obs || ''
-    })
+    .insert(limpar(corpo, user.id))
     .select()
     .single();
 
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
   return NextResponse.json({ lancamento: data }, { status: 201 });
+}
+
+/** DELETE /api/lancamentos?tudo=1 — usado pelo "Apagar tudo" dos ajustes. */
+export async function DELETE(req) {
+  const guarda = await exigirUsuario();
+  if (guarda.resposta) return guarda.resposta;
+  const { supabase, user } = guarda;
+
+  if (new URL(req.url).searchParams.get('tudo') !== '1') {
+    return NextResponse.json({ erro: 'confirme com tudo=1' }, { status: 400 });
+  }
+
+  const { error, count } = await supabase
+    .from('lancamentos')
+    .delete({ count: 'exact' })
+    .eq('user_id', user.id);
+
+  if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, excluidos: count ?? 0 });
 }

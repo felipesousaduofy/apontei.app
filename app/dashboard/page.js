@@ -1,27 +1,15 @@
-import { supabaseServidor } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { usuarioComPerfil } from '@/lib/supabase/sessao';
 import DashboardClient from './DashboardClient';
 
-function hojeISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
+/**
+ * A tela carrega os lançamentos no navegador, não aqui: o dia corrente depende
+ * do fuso de quem está usando, e o servidor roda em UTC — à noite no Brasil ele
+ * já estaria no dia seguinte.
+ */
 export default async function Dashboard() {
-  const supabase = supabaseServidor();
-  const { data: { user } } = await supabase.auth.getUser();
-  const dia = hojeISO();
+  const { user, perfil } = await usuarioComPerfil();
+  if (!user) redirect('/login');
 
-  const { data: lancamentos } = await supabase
-    .from('lancamentos')
-    .select('*')
-    .eq('data', dia)
-    .order('inicio');
-
-  return (
-    <DashboardClient
-      lancamentosIniciais={lancamentos || []}
-      dia={dia}
-      email={user?.email}
-    />
-  );
+  return <DashboardClient email={user.email} ehAdmin={!!perfil?.is_admin} />;
 }
