@@ -4,20 +4,31 @@ import {
   corCategoria, dataBR, doDia, duracaoMin, hojeISO, minParaHM,
   nomeCurtoDoDia, rotuloDoPeriodo
 } from '@/lib/apontamento';
+import Icone from '../Icone';
 
 export default function ListaLancamentos({
   lancamentos, dia, modo, config, abertos, selecionados,
-  aoAlternarAberto, aoAlternarSelecao, aoEditarCampo, aoGravarCampo, aoExcluir
+  aoAlternarAberto, aoAlternarSelecao, aoEditarCampo, aoGravarCampo, aoExcluir,
+  aoLancarManual
 }) {
   if (!lancamentos.length) {
     return (
       <ul className="lista">
-        <li className="vazio-msg">
-          Nenhum registro em {modo === 'semana' ? rotuloDoPeriodo(dia, modo) : dataBR(dia)}.
-          <br />
-          {modo === 'semana'
-            ? 'Volte para a visão de dia para começar a registrar.'
-            : 'Comece a escrever no campo acima ou clique numa lacuna da régua.'}
+        <li className="vazio-estado">
+          <span className="vazio-estado__icone"><Icone nome="folha" tamanho={20} /></span>
+          <p className="vazio-estado__titulo">
+            Nenhum registro em {modo === 'semana' ? rotuloDoPeriodo(dia, modo) : dataBR(dia)}
+          </p>
+          <p className="vazio-estado__texto">
+            {modo === 'semana'
+              ? 'Volte para a visão de dia para começar a registrar o que foi feito.'
+              : 'Escreva no campo acima e tecle Enter, ou lance um horário que já passou.'}
+          </p>
+          {modo !== 'semana' && aoLancarManual && (
+            <button className="btn btn--mini" onClick={aoLancarManual}>
+              <Icone nome="mais" tamanho={14} />Lançar manualmente
+            </button>
+          )}
         </li>
       </ul>
     );
@@ -63,6 +74,10 @@ export default function ListaLancamentos({
             <li
               id={`lanc-${l.id}`}
               className={'lanc' + (aberto ? ' lanc--aberto' : '') + (marcado ? '' : ' lanc--fora')}
+              // sem categoria não há faixa: a cor só significa algo quando foi escolhida
+              style={l.categoria
+                ? { '--cor-lanc': corCategoria(l.categoria, config.categorias) }
+                : undefined}
             >
               <div className="lanc__topo">
                 <label className="lanc__sel" title="Incluir esta atividade no texto para apontar">
@@ -139,8 +154,12 @@ export default function ListaLancamentos({
                   </div>
 
                   <div className="lanc__editor-acoes">
-                    <button className="btn" onClick={() => aoAlternarAberto(l.id)}>Fechar</button>
-                    <button className="btn btn--perigo" onClick={() => aoExcluir(l)}>Excluir</button>
+                    <button className="btn" onClick={() => aoAlternarAberto(l.id)}>
+                      <Icone nome="fechar" tamanho={15} />Fechar
+                    </button>
+                    <button className="btn btn--perigo" onClick={() => aoExcluir(l)}>
+                      <Icone nome="lixeira" tamanho={15} />Excluir
+                    </button>
                   </div>
                 </div>
               )}

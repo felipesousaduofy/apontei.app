@@ -2,7 +2,16 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Marca from '../Marca';
+import Icone from '../Icone';
+import TemaBotao from '../TemaBotao';
 import { COLUNAS, IDS_COLUNAS, PRIORIDADES, ordemEntre } from '@/lib/kanban';
+
+// a faixa lateral do cartão: prioridade num relance, sem depender de ler o crachá
+const COR_PRIORIDADE = {
+  alta: 'var(--perigo)',
+  media: 'var(--ocre)',
+  baixa: 'var(--linha-forte)'
+};
 
 function hojeISO() {
   const d = new Date();
@@ -39,6 +48,7 @@ function Cartao({ tarefa, colunaId, arrastando, hoje, aoArrastar, aoEncerrar, ao
         (arrastando === tarefa.id ? ' cartao--arrastando' : '') +
         (concluida ? ' cartao--concluido' : '')
       }
+      style={{ '--cor-cartao': COR_PRIORIDADE[tarefa.prioridade] || 'var(--linha-forte)' }}
       draggable
       onDragStart={e => aoArrastar(e, tarefa)}
       onDragEnd={aoEncerrar}
@@ -73,24 +83,28 @@ function Cartao({ tarefa, colunaId, arrastando, hoje, aoArrastar, aoEncerrar, ao
       <div className="cartao-acoes">
         <button
           className="btn btn--mini" title="Mover para a coluna anterior"
+          aria-label="Mover para a coluna anterior"
           disabled={posicao === 0} onClick={() => aoMover(tarefa, -1)}
         >
-          ‹
+          <Icone nome="esquerda" tamanho={13} />
         </button>
         <button
           className="btn btn--mini" title="Mover para a próxima coluna"
+          aria-label="Mover para a próxima coluna"
           disabled={posicao === IDS_COLUNAS.length - 1} onClick={() => aoMover(tarefa, 1)}
         >
-          ›
+          <Icone nome="direita" tamanho={13} />
         </button>
         <button
           className="btn btn--mini" style={{ marginLeft: 'auto' }}
           title="Criar um lançamento de hoje com o título e o chamado desta tarefa"
           onClick={() => aoApontar(tarefa)}
         >
-          Apontar
+          <Icone nome="relogio" tamanho={13} />Apontar
         </button>
-        <button className="btn btn--mini" onClick={() => aoAbrir(tarefa)}>Abrir</button>
+        <button className="btn btn--mini" onClick={() => aoAbrir(tarefa)}>
+          <Icone nome="lapis" tamanho={13} />Abrir
+        </button>
       </div>
     </article>
   );
@@ -315,8 +329,15 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
         <span className="rotulo">Quadro</span>
         <span className="email">{email}</span>
         <div className="acoes">
-          <Link className="btn btn--mini" href="/dashboard">Apontamentos</Link>
-          {ehAdmin && <Link className="btn btn--mini" href="/admin/usuarios">Usuários</Link>}
+          <Link className="btn btn--mini" href="/dashboard">
+            <Icone nome="relogio" tamanho={14} />Apontamentos
+          </Link>
+          {ehAdmin && (
+            <Link className="btn btn--mini" href="/admin/usuarios">
+              <Icone nome="usuarios" tamanho={14} />Usuários
+            </Link>
+          )}
+          <TemaBotao />
         </div>
       </header>
 
@@ -348,7 +369,7 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
           {PRIORIDADES.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
         </select>
         <button className="btn btn--forte" type="submit" disabled={criando}>
-          {criando ? 'Criando…' : 'Adicionar'}
+          <Icone nome="mais" tamanho={15} />{criando ? 'Criando…' : 'Adicionar'}
         </button>
       </form>
 
@@ -379,7 +400,7 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
                     onClick={() => setConfirmarLimpeza(true)}
                     title="Remover do quadro todas as tarefas concluídas"
                   >
-                    Limpar
+                    <Icone nome="lixeira" tamanho={13} />Limpar
                   </button>
                 )}
               </div>
@@ -495,7 +516,7 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
                 className="btn btn--perigo" type="button"
                 onClick={() => setAlvoExcluir(editando)}
               >
-                Excluir
+                <Icone nome="lixeira" tamanho={15} />Excluir
               </button>
               <button
                 className="btn" type="button" style={{ marginLeft: 'auto' }}
@@ -504,7 +525,7 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
                 Cancelar
               </button>
               <button className="btn btn--forte" type="submit" disabled={salvandoEdicao}>
-                {salvandoEdicao ? 'Salvando…' : 'Salvar'}
+                <Icone nome="seleciona" tamanho={15} />{salvandoEdicao ? 'Salvando…' : 'Salvar'}
               </button>
             </div>
           </form>
@@ -520,7 +541,7 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
             <div className="linha-botoes">
               <button className="btn" onClick={() => setAlvoExcluir(null)}>Cancelar</button>
               <button className="btn btn--perigo" style={{ marginLeft: 'auto' }} onClick={confirmarExclusao}>
-                Excluir
+                <Icone nome="lixeira" tamanho={15} />Excluir
               </button>
             </div>
           </div>
@@ -538,7 +559,7 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
             <div className="linha-botoes">
               <button className="btn" onClick={() => setConfirmarLimpeza(false)}>Cancelar</button>
               <button className="btn btn--perigo" style={{ marginLeft: 'auto' }} onClick={limparConcluidas}>
-                Limpar
+                <Icone nome="lixeira" tamanho={15} />Limpar
               </button>
             </div>
           </div>

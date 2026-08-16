@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Dialogo from './Dialogo';
+import Icone from '../Icone';
 import { hmParaMin } from '@/lib/apontamento';
 
 export default function DialogoManual({ inicial, config, aoFechar, aoSalvar, aoExcluir }) {
@@ -32,7 +33,12 @@ export default function DialogoManual({ inicial, config, aoFechar, aoSalvar, aoE
       <form onSubmit={enviar}>
         <div className="dlg__cab">
           <h2>{editando ? 'Editar lançamento' : 'Lançamento manual'}</h2>
-          <button type="button" className="btn btn--fantasma btn--mini" onClick={aoFechar}>Fechar</button>
+          <button
+            type="button" className="btn btn--fantasma btn--icone" onClick={aoFechar}
+            title="Fechar" aria-label="Fechar"
+          >
+            <Icone nome="fechar" tamanho={16} />
+          </button>
         </div>
 
         <div className="dlg__corpo">
@@ -110,10 +116,12 @@ export default function DialogoManual({ inicial, config, aoFechar, aoSalvar, aoE
 
         <div className="dlg__pe">
           {editando && (
-            <button type="button" className="btn btn--perigo" onClick={() => aoExcluir(form)}>Excluir</button>
+            <button type="button" className="btn btn--perigo" onClick={() => aoExcluir(form)}>
+              <Icone nome="lixeira" tamanho={15} />Excluir
+            </button>
           )}
           <button type="submit" className="btn btn--forte" disabled={salvando}>
-            {salvando ? 'Salvando…' : 'Salvar lançamento'}
+            <Icone nome="seleciona" tamanho={15} />{salvando ? 'Salvando…' : 'Salvar lançamento'}
           </button>
         </div>
       </form>

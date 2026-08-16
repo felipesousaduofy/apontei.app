@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import Dialogo from './Dialogo';
+import Icone from '../Icone';
 import { CONFIG_PADRAO } from '@/lib/apontamento';
 
 export default function DialogoAjustes({
@@ -41,7 +42,12 @@ export default function DialogoAjustes({
     <Dialogo aberto aoFechar={aoFechar}>
       <div className="dlg__cab">
         <h2>Ajustes</h2>
-        <button className="btn btn--fantasma btn--mini" onClick={aoFechar}>Fechar</button>
+        <button
+          className="btn btn--fantasma btn--icone" onClick={aoFechar}
+          title="Fechar" aria-label="Fechar"
+        >
+          <Icone nome="fechar" tamanho={16} />
+        </button>
       </div>
 
       <div className="dlg__corpo">
@@ -120,7 +126,7 @@ export default function DialogoAjustes({
         <span className="rotulo campo-rot">Onde os dados ficam</span>
         <div className="arquivo-caixa">
           <div className="arquivo-caixa__estado">
-            <span className="chip__ponto" style={{ background: '#3E6042' }} />
+            <span className="chip__ponto" style={{ background: 'var(--ok)' }} />
             <span>Gravando na sua conta do apontei</span>
           </div>
           <p className="ajuda">
@@ -135,7 +141,9 @@ export default function DialogoAjustes({
           <button className="btn" onClick={aoExportarCsv}>Exportar CSV</button>
           <button className="btn" onClick={aoExportarJson}>Exportar JSON</button>
           <button className="btn" onClick={() => arquivo.current?.click()}>Importar JSON</button>
-          <button className="btn btn--perigo" onClick={aoApagarTudo}>Apagar tudo</button>
+          <button className="btn btn--perigo" onClick={aoApagarTudo}>
+            <Icone nome="lixeira" tamanho={15} />Apagar tudo
+          </button>
           <input
             type="file" ref={arquivo} accept="application/json" hidden
             onChange={e => {
@@ -154,7 +162,7 @@ export default function DialogoAjustes({
 
       <div className="dlg__pe">
         <button className="btn btn--forte" onClick={salvar} disabled={salvando}>
-          {salvando ? 'Salvando…' : 'Salvar ajustes'}
+          <Icone nome="seleciona" tamanho={15} />{salvando ? 'Salvando…' : 'Salvar ajustes'}
         </button>
       </div>
     </Dialogo>

@@ -53,7 +53,7 @@ export default function Signup() {
             <input className="campo" id="senha" type="password" required minLength={6}
               value={senha} onChange={e => setSenha(e.target.value)} />
           </div>
-          <button className="btn btn--forte" type="submit" disabled={enviando} style={{ width: '100%' }}>
+          <button className="btn btn--forte btn--largo" type="submit" disabled={enviando}>
             {enviando ? 'Criando…' : 'Criar conta'}
           </button>
         </form>

@@ -8,7 +8,11 @@ import {
   hojeISO, isoDe, minParaDecimal, minParaHM, normalizar, rotuloDoPeriodo
 } from '@/lib/apontamento';
 import Marca from '../Marca';
+import Icone from '../Icone';
+import TemaBotao from '../TemaBotao';
 import Regua from './Regua';
+import Resumo from './Resumo';
+import Esqueleto from './Esqueleto';
 import ListaLancamentos from './ListaLancamentos';
 import Consolidado from './Consolidado';
 import DialogoManual from './DialogoManual';
@@ -403,11 +407,20 @@ export default function DashboardClient({ email, ehAdmin }) {
 
   /* ---------- tela ---------- */
 
+  // a marca e o tema já aparecem enquanto o resto carrega: a página nasce com
+  // a mesma moldura que vai ter depois, então nada salta de lugar
   if (!dia || !config) {
     return (
-      <main className="carregando">
-        <span className="rotulo">Carregando o diário…</span>
-      </main>
+      <>
+        <header className="cab">
+          <div className="cab__marca">
+            <Marca altura={40} />
+            <span>{email}</span>
+          </div>
+          <div className="cab__acoes"><TemaBotao /></div>
+        </header>
+        <Esqueleto />
+      </>
     );
   }
 
@@ -438,30 +451,49 @@ export default function DashboardClient({ email, ehAdmin }) {
             ))}
           </div>
           <button className="seta" title="Período anterior" aria-label="Período anterior"
-                  onClick={() => moverPeriodo(-1)}>‹</button>
+                  onClick={() => moverPeriodo(-1)}>
+            <Icone nome="esquerda" tamanho={16} />
+          </button>
           <input
             type="date" aria-label="Dia" value={dia}
             onChange={e => { setDia(e.target.value || hojeISO()); setAbertos(new Set()); }}
           />
           <button className="seta" title="Próximo período" aria-label="Próximo período"
-                  onClick={() => moverPeriodo(1)}>›</button>
+                  onClick={() => moverPeriodo(1)}>
+            <Icone nome="direita" tamanho={16} />
+          </button>
           <span className="cab__rotulo">{rotuloDoPeriodo(dia, modo)}</span>
-          <button className="btn btn--fantasma"
-                  onClick={() => { setDia(hojeISO()); setAbertos(new Set()); }}>Hoje</button>
+          <button className="btn"
+                  onClick={() => { setDia(hojeISO()); setAbertos(new Set()); }}>
+            <Icone nome="calendario" tamanho={15} />Hoje
+          </button>
         </div>
 
         <div className="cab__acoes">
           <button className="btn" onClick={() => setManual({ ...MANUAL_VAZIO, data: dia })}>
-            Lançar manualmente
+            <Icone nome="mais" tamanho={15} />Lançar
           </button>
-          <button className="btn" onClick={() => setAjustes(true)}>Ajustes</button>
-          <Link className="btn" href="/kanban">Quadro</Link>
-          {ehAdmin && <Link className="btn" href="/admin/usuarios">Usuários</Link>}
-          <button className="btn btn--fantasma" onClick={sair}>Sair</button>
+          <button className="btn" onClick={() => setAjustes(true)}>
+            <Icone nome="ajustes" tamanho={15} />Ajustes
+          </button>
+          <Link className="btn" href="/kanban">
+            <Icone nome="colunas" tamanho={15} />Quadro
+          </Link>
+          {ehAdmin && (
+            <Link className="btn" href="/admin/usuarios">
+              <Icone nome="usuarios" tamanho={15} />Usuários
+            </Link>
+          )}
+          <TemaBotao />
+          <button className="btn btn--icone" onClick={sair} title="Sair da conta" aria-label="Sair da conta">
+            <Icone nome="sair" tamanho={16} />
+          </button>
         </div>
       </header>
 
       {erro && <p className="tarja tarja--erro">{erro}</p>}
+
+      <Resumo lancamentos={doPeriodo} dias={dias} modo={modo} config={config} />
 
       <section className="captura">
         {ativa && (
@@ -521,6 +553,7 @@ export default function DashboardClient({ email, ehAdmin }) {
                 el.focus();
               }}
             >
+              <Icone nome={ativa ? 'mais' : 'play'} tamanho={15} />
               {ativa ? 'Nova atividade' : 'Iniciar'}
             </button>
             {ativa && (
@@ -535,7 +568,7 @@ export default function DashboardClient({ email, ehAdmin }) {
                   ajustarAltura(el);
                 }}
               >
-                Encerrar
+                <Icone nome="parar" tamanho={15} />Encerrar
               </button>
             )}
           </div>
@@ -589,6 +622,7 @@ export default function DashboardClient({ email, ehAdmin }) {
             aoEditarCampo={editarCampo}
             aoGravarCampo={gravarCampo}
             aoExcluir={pedirExclusao}
+            aoLancarManual={() => setManual({ ...MANUAL_VAZIO, data: dia })}
           />
         </section>
 
@@ -677,7 +711,7 @@ export default function DashboardClient({ email, ehAdmin }) {
                 await acao();
               }}
             >
-              {confirmacao.confirmar}
+              <Icone nome="lixeira" tamanho={15} />{confirmacao.confirmar}
             </button>
           </div>
         </Dialogo>

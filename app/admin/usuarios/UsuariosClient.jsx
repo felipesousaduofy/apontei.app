@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Marca from '../../Marca';
+import Icone from '../../Icone';
+import TemaBotao from '../../TemaBotao';
 
 // formata direto da string ISO para não depender do fuso do navegador
 // (evitaria bater com o que o servidor renderizou)
@@ -84,9 +86,12 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
         <span className="email">{email}</span>
         <div className="acoes">
           <button className="btn btn--mini" onClick={atualizarLista} disabled={atualizando}>
-            {atualizando ? 'Atualizando…' : 'Atualizar'}
+            <Icone nome="relogio" tamanho={14} />{atualizando ? 'Atualizando…' : 'Atualizar'}
           </button>
-          <Link className="btn btn--mini" href="/dashboard">Voltar</Link>
+          <Link className="btn btn--mini" href="/dashboard">
+            <Icone nome="esquerda" tamanho={14} />Voltar
+          </Link>
+          <TemaBotao />
         </div>
       </header>
 
@@ -167,7 +172,7 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
                           }
                           onClick={() => setAlvoExcluir(u)}
                         >
-                          Excluir
+                          <Icone nome="lixeira" tamanho={13} />Excluir
                         </button>
                       </div>
                     )}
@@ -202,7 +207,7 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
                 style={{ marginLeft: 'auto' }}
                 onClick={confirmarExclusao}
               >
-                Excluir
+                <Icone nome="lixeira" tamanho={15} />Excluir
               </button>
             </div>
           </div>
