@@ -93,6 +93,13 @@ create trigger trg_tarefas_atualizado
   before update on public.tarefas
   for each row execute function public.tocar_atualizado_em();
 
+-- liga um lançamento ao cartão do quadro que o originou (lançamento rápido em
+-- Pendencias, no diário) — fica em branco pra tudo que foi digitado à mão.
+-- Só existe depois daqui porque "tarefas" precisa existir primeiro; apagar o
+-- cartão não apaga o lançamento, só solta a referência.
+alter table public.lancamentos add column if not exists tarefa_id uuid references public.tarefas(id) on delete set null;
+create index if not exists lancamentos_tarefa on public.lancamentos (tarefa_id) where tarefa_id is not null;
+
 -- ---------------------------------------------------------------
 -- perfis: espelho de auth.users com permissão e situação da conta
 -- ---------------------------------------------------------------

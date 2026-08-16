@@ -19,12 +19,10 @@ const ROTULO_PRAZO = {
 
 /**
  * Fila de tarefas pendentes do quadro, para começar a apontar sem sair do
- * diário. Some por inteiro quando não há nada pendente — não é o quadro
- * inteiro, só o atalho para o que already está na fila.
+ * diário — e criar uma tarefa nova, também sem sair. Fica sempre visível: é o
+ * único jeito de chegar em "Nova tarefa" a partir do dashboard.
  */
-export default function Pendencias({ itens, aoApontar }) {
-  if (!itens.length) return null;
-
+export default function Pendencias({ itens, aoApontar, aoNovaTarefa }) {
   const visiveis = itens.slice(0, LIMITE);
   const resto = itens.length - visiveis.length;
 
@@ -33,35 +31,40 @@ export default function Pendencias({ itens, aoApontar }) {
       <div className="pendencias__cab">
         <span className="rotulo">Fila do quadro</span>
         <span className="pendencias__meta">
-          clique para começar a apontar agora
+          {itens.length ? 'clique para começar a apontar agora' : 'nada pendente no quadro'}
         </span>
+        <button className="btn btn--mini pendencias__nova" onClick={aoNovaTarefa}>
+          <Icone nome="mais" tamanho={13} />Nova tarefa
+        </button>
       </div>
 
-      <div className="pendencias__lista">
-        {visiveis.map(({ tarefa, prazoClasse }) => (
-          <button
-            key={tarefa.id}
-            className="pendencia"
-            style={{ '--cor-cartao': COR_PRIORIDADE[tarefa.prioridade] || 'var(--linha-forte)' }}
-            onClick={() => aoApontar(tarefa)}
-            title={`Apontar agora: ${tarefa.titulo}`}
-          >
-            <Icone nome="play" tamanho={13} />
-            <span className="pendencia__titulo">{tarefa.titulo}</span>
-            {tarefa.chamado && <span className="tag">{tarefa.chamado}</span>}
-            {prazoClasse && (
-              <span className={'cracha cracha--' + (prazoClasse === 'vencida' ? 'atrasada' : 'proxima')}>
-                {ROTULO_PRAZO[prazoClasse](tarefa.prazo)}
-              </span>
-            )}
-          </button>
-        ))}
+      {itens.length > 0 && (
+        <div className="pendencias__lista">
+          {visiveis.map(({ tarefa, prazoClasse }) => (
+            <button
+              key={tarefa.id}
+              className="pendencia"
+              style={{ '--cor-cartao': COR_PRIORIDADE[tarefa.prioridade] || 'var(--linha-forte)' }}
+              onClick={() => aoApontar(tarefa)}
+              title={`Apontar agora: ${tarefa.titulo}`}
+            >
+              <Icone nome="play" tamanho={13} />
+              <span className="pendencia__titulo">{tarefa.titulo}</span>
+              {tarefa.chamado && <span className="tag">{tarefa.chamado}</span>}
+              {prazoClasse && (
+                <span className={'cracha cracha--' + (prazoClasse === 'vencida' ? 'atrasada' : 'proxima')}>
+                  {ROTULO_PRAZO[prazoClasse](tarefa.prazo)}
+                </span>
+              )}
+            </button>
+          ))}
 
-        <Link href="/kanban" className="pendencia pendencia--mais">
-          <Icone nome="colunas" tamanho={13} />
-          {resto > 0 ? `+${resto} no quadro` : 'Ver quadro'}
-        </Link>
-      </div>
+          <Link href="/kanban" className="pendencia pendencia--mais">
+            <Icone nome="colunas" tamanho={13} />
+            {resto > 0 ? `+${resto} no quadro` : 'Ver quadro'}
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

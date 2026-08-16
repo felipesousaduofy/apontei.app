@@ -443,8 +443,9 @@ a.btn{text-decoration:none;color:inherit}
    fila do quadro — lançamento rápido a partir das tarefas pendentes
    ============================================================ */
 .pendencias{padding:16px 20px 0}
-.pendencias__cab{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.pendencias__cab{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .pendencias__meta{font-size:12px;color:var(--tinta-fantasma)}
+.pendencias__nova{margin-left:auto;flex:none}
 .pendencias__lista{display:flex;gap:8px;flex-wrap:wrap}
 
 .pendencia{

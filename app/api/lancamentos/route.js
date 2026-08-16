@@ -108,9 +108,11 @@ export async function POST(req) {
     return NextResponse.json({ erro: 'informe pelo menos data e início' }, { status: 400 });
   }
 
+  // tarefa_id só entra pelo lançamento único — a importação em massa nunca
+  // teria um cartão de quadro de origem legítimo para referenciar
   const { data, error } = await supabase
     .from('lancamentos')
-    .insert(limpar(corpo, user.id))
+    .insert({ ...limpar(corpo, user.id), tarefa_id: corpo.tarefa_id || null })
     .select()
     .single();
 

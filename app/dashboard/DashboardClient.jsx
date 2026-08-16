@@ -7,7 +7,7 @@ import {
   CONFIG_PADRAO, agoraHM, diasDoPeriodo, duracaoMin, emAndamento, hmParaMin,
   hojeISO, isoDe, minParaDecimal, minParaHM, normalizar, rotuloDoPeriodo
 } from '@/lib/apontamento';
-import { ordenarPorUrgencia } from '@/lib/kanban';
+import { nomeDaColuna, ordemEntre, ordenarPorUrgencia } from '@/lib/kanban';
 import Marca from '../Marca';
 import Icone from '../Icone';
 import TemaBotao from '../TemaBotao';
@@ -17,6 +17,8 @@ import Resumo from './Resumo';
 import Esqueleto from './Esqueleto';
 import Pendencias from './Pendencias';
 import AlertaPrazos from './AlertaPrazos';
+import PerguntaCartao from './PerguntaCartao';
+import DialogoNovaTarefa from './DialogoNovaTarefa';
 import ListaLancamentos from './ListaLancamentos';
 import Consolidado from './Consolidado';
 import DialogoManual from './DialogoManual';
@@ -49,15 +51,22 @@ export default function DashboardClient({ email, ehAdmin }) {
   const [manual, setManual] = useState(null);
   const [ajustes, setAjustes] = useState(false);
   const [confirmacao, setConfirmacao] = useState(null);
+  const [digitadoConfirma, setDigitadoConfirma] = useState('');
   const [saindo, setSaindo] = useState(false);
 
   const [tarefas, setTarefas] = useState([]);
   const [tarefasCarregadas, setTarefasCarregadas] = useState(false);
   const [alertaPrazos, setAlertaPrazos] = useState(false);
+  const [perguntaCartao, setPerguntaCartao] = useState(null); // { tipo: 'iniciar'|'encerrar', tarefa }
+  const [novaTarefa, setNovaTarefa] = useState(false);
 
   const [, forcarRender] = useReducer(x => x + 1, 0);
   const campoRapido = useRef(null);
   const cronometroAviso = useRef(null);
+
+  // some junto com o texto digitado sempre que uma confirmação abre outra
+  // (ou fecha), pra não sobrar a exigência de uma pergunta anterior
+  useEffect(() => { setDigitadoConfirma(''); }, [confirmacao]);
 
   const dias = useMemo(() => (dia ? diasDoPeriodo(dia, modo) : []), [dia, modo]);
 
@@ -199,6 +208,7 @@ export default function DashboardClient({ email, ehAdmin }) {
     if (anterior) await encerrarAtividade();
     const hora = agoraHM();
     setDia(hojeISO());
+    // digitada à mão: sem tarefa_id, não fica presa a nenhum cartão do quadro
     await criar({
       data: hojeISO(),
       inicio: hora,
@@ -217,7 +227,10 @@ export default function DashboardClient({ email, ehAdmin }) {
   /**
    * Lançamento rápido a partir de uma tarefa do quadro: encerra a atividade
    * aberta (se houver) e começa uma nova já com chamado/projeto herdados do
-   * cartão. O cartão continua no quadro — apontar e concluir são coisas
+   * cartão. O vínculo com o cartão fica gravado em tarefa_id — é o que deixa
+   * a pergunta "concluir ou voltar?" funcionar mesmo depois de ir ao quadro e
+   * voltar, já que o dashboard remonta e perderia qualquer estado só em
+   * memória. O cartão continua no quadro — apontar e concluir são coisas
    * separadas, igual no quadro.
    */
   async function lancarTarefa(tarefa) {
@@ -231,12 +244,54 @@ export default function DashboardClient({ email, ehAdmin }) {
       descricao: `${hora} · ${tarefa.titulo}`,
       chamado: tarefa.chamado || '',
       projeto: tarefa.projeto || (anterior ? anterior.projeto : ''),
-      categoria: config?.categorias?.[0] || ''
+      categoria: config?.categorias?.[0] || '',
+      tarefa_id: tarefa.id
     });
     if (novo) {
       setAlertaPrazos(false);
       mostrarAviso(`Iniciado: ${tarefa.titulo}`);
+      // já está em Fazendo (ou concluída, o que não deveria chegar aqui) — nada a perguntar
+      if (tarefa.coluna !== 'fazendo') setPerguntaCartao({ tipo: 'iniciar', tarefa });
     }
+  }
+
+  /** Move um cartão do quadro de coluna, igual ao que o próprio quadro faz. */
+  async function moverTarefaColuna(tarefa, colunaDestino) {
+    if (!tarefa || tarefa.coluna === colunaDestino) return;
+    const doDestino = tarefas.filter(t => t.coluna === colunaDestino).sort((a, b) => a.ordem - b.ordem);
+    const ordem = ordemEntre(doDestino[doDestino.length - 1], null);
+
+    const anterior = tarefas;
+    setTarefas(atual => atual.map(t => (t.id === tarefa.id ? { ...t, coluna: colunaDestino, ordem } : t)));
+
+    const resp = await fetch(`/api/tarefas/${tarefa.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coluna: colunaDestino, ordem })
+    });
+    if (!resp.ok) {
+      setTarefas(anterior);
+      setErro('Não foi possível mover o cartão no quadro.');
+      return;
+    }
+    const corpo = await resp.json().catch(() => ({}));
+    if (corpo.tarefa) setTarefas(atual => atual.map(t => (t.id === tarefa.id ? corpo.tarefa : t)));
+    mostrarAviso(`Cartão movido para ${nomeDaColuna(colunaDestino)}.`);
+  }
+
+  /** Cria uma tarefa no quadro sem sair do diário — mesmo POST do próprio quadro. */
+  async function criarTarefaRapida(dados) {
+    const resp = await fetch('/api/tarefas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados)
+    });
+    const corpo = await resp.json().catch(() => ({}));
+    if (!resp.ok) { setErro(corpo.erro || 'Não foi possível criar a tarefa.'); return false; }
+    setTarefas(atual => [...atual, corpo.tarefa]);
+    setNovaTarefa(false);
+    mostrarAviso(`Tarefa criada: ${corpo.tarefa.titulo}`);
+    return true;
   }
 
   function ajustarAltura(el) {
@@ -435,9 +490,11 @@ export default function DashboardClient({ email, ehAdmin }) {
   function pedirApagarTudo() {
     setConfirmacao({
       titulo: 'Apagar tudo',
-      texto: 'Todos os seus lançamentos serão apagados da sua conta.',
-      alerta: 'Exporte o JSON antes se quiser guardar o histórico. Não dá para desfazer.',
+      texto: `Isso exclui permanentemente TODOS os lançamentos da conta ${email} — o histórico inteiro, não só o período que está na tela.`,
+      alerta: 'Não dá para desfazer. Exporte o JSON antes se quiser guardar uma cópia.',
       confirmar: 'Apagar tudo',
+      // ação grave demais para um clique só: exige digitar o e-mail da conta
+      exigirDigitar: email,
       acao: async () => {
         const resp = await fetch('/api/lancamentos?tudo=1', { method: 'DELETE' });
         const corpo = await resp.json().catch(() => ({}));
@@ -634,7 +691,14 @@ export default function DashboardClient({ email, ehAdmin }) {
                   const el = campoRapido.current;
                   const texto = el.value.trim();
                   if (texto) await anotarNaAtividade(texto);
+                  // lê o vínculo do próprio lançamento — sobrevive a ter saído
+                  // e voltado ao dashboard, diferente de um estado só em memória
+                  const tarefaId = ativa?.tarefa_id;
                   await encerrarAtividade();
+                  const tarefa = tarefaId && tarefas.find(t => t.id === tarefaId);
+                  if (tarefa && tarefa.coluna !== 'concluido') {
+                    setPerguntaCartao({ tipo: 'encerrar', tarefa });
+                  }
                   el.value = '';
                   ajustarAltura(el);
                 }}
@@ -654,7 +718,11 @@ export default function DashboardClient({ email, ehAdmin }) {
         </p>
       </section>
 
-      <Pendencias itens={pendentes} aoApontar={lancarTarefa} />
+      <Pendencias
+        itens={pendentes}
+        aoApontar={lancarTarefa}
+        aoNovaTarefa={() => setNovaTarefa(true)}
+      />
 
       <Regua
         lancamentos={doPeriodo}
@@ -772,12 +840,32 @@ export default function DashboardClient({ email, ehAdmin }) {
               </div>
             )}
             {confirmacao.alerta && <p className="perg-aviso">{confirmacao.alerta}</p>}
+
+            {confirmacao.exigirDigitar && (
+              <div className="bloco-campo" style={{ marginTop: 14, marginBottom: 0 }}>
+                <label className="rotulo campo-rot" htmlFor="confirma-digitar">
+                  Para confirmar, digite <strong style={{ textTransform: 'none' }}>{confirmacao.exigirDigitar}</strong>
+                </label>
+                <input
+                  id="confirma-digitar"
+                  className="campo"
+                  autoComplete="off"
+                  autoFocus
+                  value={digitadoConfirma}
+                  onChange={e => setDigitadoConfirma(e.target.value)}
+                />
+              </div>
+            )}
           </div>
           <div className="dlg__pe">
             <button className="btn" onClick={() => setConfirmacao(null)}>Cancelar</button>
             <button
               className="btn btn--perigo"
               style={{ marginLeft: 'auto' }}
+              disabled={
+                !!confirmacao.exigirDigitar &&
+                digitadoConfirma.trim().toLowerCase() !== confirmacao.exigirDigitar.trim().toLowerCase()
+              }
               onClick={async () => {
                 const acao = confirmacao.acao;
                 setConfirmacao(null);
@@ -795,6 +883,21 @@ export default function DashboardClient({ email, ehAdmin }) {
           itens={comPrazo}
           aoFechar={() => setAlertaPrazos(false)}
           aoApontar={lancarTarefa}
+        />
+      )}
+
+      {perguntaCartao && (
+        <PerguntaCartao
+          pergunta={perguntaCartao}
+          aoFechar={() => setPerguntaCartao(null)}
+          aoMover={coluna => moverTarefaColuna(perguntaCartao.tarefa, coluna)}
+        />
+      )}
+
+      {novaTarefa && (
+        <DialogoNovaTarefa
+          aoFechar={() => setNovaTarefa(false)}
+          aoCriar={criarTarefaRapida}
         />
       )}
 
