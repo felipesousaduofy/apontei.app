@@ -415,14 +415,28 @@ a.btn{text-decoration:none;color:inherit}
 .ativo__meta input:focus,.ativo__meta select:focus{
   border-color:var(--carimbo);box-shadow:0 0 0 3px var(--carimbo-claro);
 }
+.ativo__linhasWrap{
+  margin-top:11px;border-top:1px dashed var(--carimbo-borda);padding-top:10px;position:relative;
+}
 .ativo__linhas{
-  margin-top:11px;border-top:1px dashed var(--carimbo-borda);padding-top:10px;
-  font-size:14px;white-space:pre-wrap;max-height:150px;overflow:auto;
+  font-size:14px;white-space:pre-wrap;max-height:150px;overflow:auto;padding-right:26px;
 }
 .ativo__linhas:empty::after{
   content:'Sem anotações ainda. Escreva abaixo e pressione Enter para registrar o que foi feito.';
   color:var(--tinta-fantasma);font-style:italic;
 }
+.ativo__editarDesc{
+  position:absolute;top:0;right:0;border:none;background:none;color:var(--tinta-fraca);
+  cursor:pointer;padding:4px;border-radius:var(--r);display:flex;line-height:0;
+  transition:color var(--mov-rapido),background var(--mov-rapido);
+}
+.ativo__editarDesc:hover{color:var(--carimbo);background:var(--ficha)}
+.ativo__descEditor{
+  display:block;width:100%;min-height:64px;font:inherit;font-size:14px;resize:vertical;
+  border:1px solid var(--carimbo-borda);border-radius:var(--r);background:var(--ficha);
+  padding:8px 10px;outline:none;
+}
+.ativo__descEditor:focus{border-color:var(--carimbo);box-shadow:0 0 0 3px var(--carimbo-claro)}
 
 .entrada{
   display:flex;gap:10px;align-items:flex-end;background:var(--ficha);

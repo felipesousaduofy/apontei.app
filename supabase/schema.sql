@@ -114,6 +114,11 @@ create table if not exists public.perfis (
 
 create index if not exists perfis_email on public.perfis (email);
 
+-- liga quando um admin define a senha manualmente (fallback para quando o
+-- envio de e-mail falha): força a pessoa a trocar por uma senha só dela
+-- antes de deixar usar o resto do app. Some sozinho quando ela troca.
+alter table public.perfis add column if not exists deve_trocar_senha boolean not null default false;
+
 -- security definer para poder ser usada dentro das próprias políticas de
 -- perfis sem cair em recursão infinita de RLS
 create or replace function public.eh_admin(uid uuid)
@@ -263,7 +268,10 @@ select
   p.is_admin,
   p.ativo,
   p.criado_em,
-  coalesce(t.total, 0)::int as total_lancamentos
+  coalesce(t.total, 0)::int as total_lancamentos,
+  -- no fim de propósito: CREATE OR REPLACE VIEW não deixa mudar a posição
+  -- das colunas que já existem, só acrescentar novas no final
+  p.deve_trocar_senha
 from public.perfis p
 left join (
   select user_id, count(*) as total

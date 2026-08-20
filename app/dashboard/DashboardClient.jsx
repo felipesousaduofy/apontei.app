@@ -59,6 +59,7 @@ export default function DashboardClient({ email, ehAdmin }) {
   const [alertaPrazos, setAlertaPrazos] = useState(false);
   const [perguntaCartao, setPerguntaCartao] = useState(null); // { tipo: 'iniciar'|'encerrar', tarefa }
   const [novaTarefa, setNovaTarefa] = useState(false);
+  const [editandoDescricao, setEditandoDescricao] = useState(false);
 
   const [, forcarRender] = useReducer(x => x + 1, 0);
   const campoRapido = useRef(null);
@@ -78,6 +79,10 @@ export default function DashboardClient({ email, ehAdmin }) {
     [lancamentos, dias]
   );
   const ativa = emAndamento(lancamentos);
+
+  // fecha o editor de descrição se a atividade ativa mudar (encerrada,
+  // trocada por outra) pra não deixar o textarea gravando no lançamento errado
+  useEffect(() => { setEditandoDescricao(false); }, [ativa?.id]);
 
   function mostrarAviso(texto) {
     setAviso(texto);
@@ -657,7 +662,38 @@ export default function DashboardClient({ email, ehAdmin }) {
                 </select>
               </div>
             </div>
-            <div className="ativo__linhas">{ativa.descricao}</div>
+            <div className="ativo__linhasWrap">
+              {editandoDescricao ? (
+                <textarea
+                  key={`descricao-${ativa.id}`}
+                  className="ativo__descEditor"
+                  autoFocus
+                  rows={3}
+                  defaultValue={ativa.descricao}
+                  placeholder="Descrição da atividade"
+                  onBlur={e => {
+                    alterar(ativa.id, { descricao: e.target.value.trim() });
+                    setEditandoDescricao(false);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') { e.currentTarget.blur(); }
+                  }}
+                />
+              ) : (
+                <>
+                  <div className="ativo__linhas">{ativa.descricao}</div>
+                  <button
+                    type="button"
+                    className="ativo__editarDesc"
+                    onClick={() => setEditandoDescricao(true)}
+                    title="Editar descrição"
+                    aria-label="Editar descrição da atividade"
+                  >
+                    <Icone nome="lapis" tamanho={13} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
 

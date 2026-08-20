@@ -76,6 +76,9 @@ export default function Login() {
             <label className="rotulo" htmlFor="senha">Senha</label>
             <input className="campo" id="senha" type="password" required
               value={senha} onChange={e => setSenha(e.target.value)} />
+            <p className="rodape-auth" style={{ marginTop: 6, textAlign: 'right' }}>
+              <Link href="/esqueci-senha">Esqueci minha senha</Link>
+            </p>
           </div>
           <button className="btn btn--forte btn--largo" type="submit" disabled={enviando}>
             {enviando && <span className="giro" />}
