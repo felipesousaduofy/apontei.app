@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Marca from '../Marca';
 import Icone from '../Icone';
 import TemaBotao from '../TemaBotao';
+import Avisos from '../Avisos';
 import { COLUNAS, IDS_COLUNAS, PRIORIDADES, classificarPrazo, ordemEntre } from '@/lib/kanban';
 
 // a faixa lateral do cartão: prioridade num relance, sem depender de ler o crachá
@@ -337,6 +338,7 @@ export default function KanbanClient({ tarefasIniciais, email, nome, ehAdmin }) 
               <Icone nome="usuarios" tamanho={14} /><span className="rotulo-btn">Usuários</span>
             </Link>
           )}
+          <Avisos mini />
           <TemaBotao />
         </div>
       </header>

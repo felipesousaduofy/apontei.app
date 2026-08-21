@@ -36,6 +36,10 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <Progresso />
+        {/* destino das faixas de aviso fixado — fica aqui, e não dentro de
+            cada tela, para a faixa nascer no topo da página em qualquer uma
+            delas (ver app/Avisos.jsx) */}
+        <div id="tarjas-avisos" />
         {children}
       </body>
     </html>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Marca from '../../Marca';
 import Icone from '../../Icone';
 import TemaBotao from '../../TemaBotao';
+import Avisos from '../../Avisos';
 
 // formata direto da string ISO para não depender do fuso do navegador
 // (evitaria bater com o que o servidor renderizou)
@@ -198,9 +199,13 @@ export default function UsuariosClient({
           <Link className="btn btn--mini" href="/admin/equipes" title="Equipes">
             <Icone nome="colunas" tamanho={14} /><span className="rotulo-btn">Equipes</span>
           </Link>
+          <Link className="btn btn--mini" href="/admin/avisos" title="Publicar avisos">
+            <Icone nome="sino" tamanho={14} /><span className="rotulo-btn">Avisos</span>
+          </Link>
           <Link className="btn btn--mini" href="/dashboard" title="Voltar">
             <Icone nome="esquerda" tamanho={14} /><span className="rotulo-btn">Voltar</span>
           </Link>
+          <Avisos mini />
           <TemaBotao />
         </div>
       </header>
@@ -257,6 +262,17 @@ export default function UsuariosClient({
                             : 'Só vê os lançamentos da equipe'}
                         >
                           Supervisor {u.supervisor_pode_editar ? '· edita' : '· vê'}
+                        </span>
+                      )}
+                      {/* crachá à parte, e não um terceiro sufixo no de cima:
+                          avisar é permissão de outra natureza — fala com as
+                          pessoas, não com os lançamentos delas */}
+                      {u.is_supervisor && u.supervisor_pode_avisar && (
+                        <span
+                          className="cracha cracha--aviso-equipe"
+                          title="Pode publicar avisos para a própria equipe"
+                        >
+                          Avisa a equipe
                         </span>
                       )}
                     </div>
@@ -328,6 +344,17 @@ export default function UsuariosClient({
                 {doMenu.supervisor_pode_editar
                   ? 'Restringir a só visualizar'
                   : 'Permitir editar lançamentos'}
+              </button>
+            )}
+            {doMenu.is_supervisor && (
+              <button
+                className="menu__item" role="menuitem" disabled={menuOcupado}
+                onClick={() => alterar(doMenu, { supervisor_pode_avisar: !doMenu.supervisor_pode_avisar })}
+              >
+                <Icone nome="sino" tamanho={15} />
+                {doMenu.supervisor_pode_avisar
+                  ? 'Tirar a permissão de avisar'
+                  : 'Permitir publicar avisos'}
               </button>
             )}
             {doMenu.is_supervisor && !doMenu.equipe_id && (

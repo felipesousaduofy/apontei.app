@@ -4,11 +4,12 @@ import Link from 'next/link';
 import Marca from '../Marca';
 import Icone from '../Icone';
 import TemaBotao from '../TemaBotao';
+import Avisos from '../Avisos';
 import Resumo from '../dashboard/Resumo';
 import ListaLancamentos from '../dashboard/ListaLancamentos';
 import { CONFIG_PADRAO, diasDoPeriodo, hojeISO, isoDe, normalizar, rotuloDoPeriodo } from '@/lib/apontamento';
 
-export default function EquipeClient({ email, nome, podeEditar }) {
+export default function EquipeClient({ email, nome, podeEditar, podeAvisar }) {
   const [colegas, setColegas] = useState([]);
   const [carregandoColegas, setCarregandoColegas] = useState(true);
   const [colegaId, setColegaId] = useState('');
@@ -150,9 +151,15 @@ export default function EquipeClient({ email, nome, podeEditar }) {
         <span className="rotulo">Equipe</span>
         <span className="email" title={email}>{nome || email}</span>
         <div className="acoes">
+          {podeAvisar && (
+            <Link className="btn btn--mini" href="/equipe/avisos" title="Avisar a equipe">
+              <Icone nome="sino" tamanho={14} /><span className="rotulo-btn">Avisar equipe</span>
+            </Link>
+          )}
           <Link className="btn btn--mini" href="/dashboard" title="Voltar">
             <Icone nome="esquerda" tamanho={14} /><span className="rotulo-btn">Voltar</span>
           </Link>
+          <Avisos mini />
           <TemaBotao />
         </div>
       </header>

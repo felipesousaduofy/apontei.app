@@ -49,6 +49,8 @@ dependem do armazenamento de um navegador nem de um `.json` na máquina.
 - Tela de gerenciamento de usuários (`/admin/usuarios`), só para
   administradores: dar e tirar permissão de admin, ativar/desativar contas e
   excluir quem não tem nenhum lançamento.
+- Avisos no sino do topo — do administrador para todo mundo, ou do supervisor
+  para a equipe dele —, com janela de publicação e entrega em tempo real.
 
 ## Quadro Kanban
 
@@ -96,6 +98,80 @@ a conta mais antiga. Para promover alguém na mão, no SQL Editor do Supabase:
 update public.perfis set is_admin = true where email = 'fulano@empresa.com.br';
 ```
 
+## Avisos
+
+O **sino** no topo de todas as telas mostra os recados endereçados a você. O
+contador conta só os que ainda não foram lidos, e abrir a lista já marca tudo
+como lido — a marcação fica no banco, então o aviso não volta do zero quando
+você abre o apontei no celular.
+
+Quem publica escreve em **Avisos**: administradores em `/admin/avisos`, e
+supervisores com permissão em `/equipe/avisos` (botão **Avisar equipe**, na
+tela da equipe).
+
+### Quem pode falar com quem
+
+| | Administrador | Supervisor com permissão |
+|---|---|---|
+| Destino | todo mundo, uma equipe ou uma pessoa | a própria equipe, ou alguém dela |
+| Tipos | Informativo, Manutenção e Novidade | Informativo |
+| Faixa no topo / abrir na tela | sim | sim |
+
+A permissão do supervisor se liga no menu de cada usuário em
+`/admin/usuarios` → **Permitir publicar avisos**, junto com as outras de
+supervisão. Sem ela, supervisor nenhum publica nada. Supervisor sem equipe
+também não publica — não haveria para quem.
+
+O supervisor nunca escolhe o destino de fato: o servidor deriva a equipe do
+perfil dele e, quando o recado é para uma pessoa só, confere que ela está
+mesmo na sua equipe. Administrador enxerga e pode apagar todos os avisos,
+inclusive os dos supervisores — é assim que se modera o que foi publicado.
+
+### Quanto o aviso interrompe
+
+Ao publicar, escolha um de três níveis em **Como mostrar**:
+
+- **Só no sino** — entra na lista e soma no contador. É o normal.
+- **Faixa no topo da tela** — vira uma faixa acima de todas as telas até a
+  pessoa clicar em "Entendi".
+- **Abrir na frente da pessoa** — aparece sozinho, na hora, para quem estiver
+  com o apontei aberto, e também assim que a pessoa entra. Fechar equivale a
+  dar ciência.
+
+Faixa e tela chegam **sem recarregar a página**: a tabela `avisos` está na
+publicação do Realtime do Supabase, então publicar empurra o evento e a tela
+de quem está logado reage na hora. O evento serve só de gatilho — o navegador
+refaz a busca em `/api/avisos`, para quem enxerga o quê continuar sendo
+decidido pela RLS, e não pelo canal.
+
+Existe ainda uma varredura de segurança a cada 3 minutos, para o caso de o
+canal cair. É ela também que faz aparecer o aviso **agendado**: enquanto a
+data de publicação não chega, a RLS não deixa o evento sair, então quem já
+estava com a tela aberta o vê na varredura seguinte.
+
+### As cores
+
+Como admin e supervisor podem interromper ao mesmo tempo, a cor responde de
+onde o recado veio antes de você ler uma palavra:
+
+- **roxo** — aviso do sistema, publicado por um administrador;
+- **vermelho** — manutenção (só administrador publica);
+- **ocre** — aviso da sua equipe, publicado pelo seu supervisor.
+
+Caindo mais de um ao mesmo tempo, eles empilham nessa ordem: manutenção em
+cima, depois o resto do sistema, por último os da equipe.
+
+### Janela de publicação
+
+**Publicar em** e **Sai do ar em** são o que faz o aviso de manutenção
+funcionar: escreva na terça, publique na quinta, e ele some sozinho no
+domingo. Um aviso fora da janela não existe para o destinatário — isso é
+garantido pelo banco (a policy de RLS filtra a vigência), não só pela tela.
+
+Vale lembrar da limitação de fundo: aviso só chega a quem abre o sistema. Se a
+manutenção derrubar o app, o aviso não aparece — por isso publique com
+antecedência. Envio por e-mail não faz parte desta versão.
+
 ## O que ainda falta portar do protótipo local (`apontei.html`)
 
 A tela atual é deliberadamente enxuta, só para provar que login → banco →
@@ -110,7 +186,8 @@ depois que você validar que a base está no ar e funcionando.
 1. Crie uma conta em supabase.com e um novo projeto.
 2. Vá em **SQL Editor** → **New query**, cole o conteúdo de
    `supabase/schema.sql` e rode. Isso cria as tabelas `lancamentos`, `config`,
-   `tarefas` e `perfis`, com as regras de acesso (RLS) já configuradas. O arquivo é seguro
+   `tarefas`, `perfis`, `equipes`, `avisos` e `avisos_lidos`, com as regras de
+   acesso (RLS) já configuradas. O arquivo é seguro
    de rodar de novo a cada atualização — não apaga nada que já existe.
 3. Em **Authentication → Providers**, confirme que **Email** está habilitado.
 4. Em **Authentication → Settings**, se quiser pular a confirmação por
@@ -172,11 +249,18 @@ app/
   dashboard/         tela principal (protegida pelo middleware)
   kanban/            quadro de tarefas pendentes
   admin/usuarios/    gerenciamento de usuários (só para administradores)
+  admin/avisos/      publicar avisos para o sistema todo
+  equipe/avisos/     publicar avisos para a equipe (supervisor com permissão)
+  Avisos.jsx         o sino e as faixas fixadas, plugado nos cinco cabeçalhos
+  GestaoAvisos.jsx   a tela de publicar, usada pelas duas rotas acima
   api/lancamentos/   API REST (GET/POST/DELETE em /, PATCH/DELETE em /[id])
   api/config/        ajustes do usuário (GET/PATCH)
   api/tarefas/       API do quadro (GET/POST/DELETE em /, PATCH/DELETE em /[id])
   api/usuarios/      API de administração (GET em /, PATCH/DELETE em /[id])
+  api/avisos/        avisos (GET/POST em /, PATCH/DELETE em /[id],
+                     POST/DELETE em /[id]/lido, GET em /gerenciados)
 lib/apontamento.js   tempo, régua, lacunas e o consolidado (funções puras)
+lib/avisos.js        tipos, cores e ordenação dos avisos (funções puras)
 lib/kanban.js        colunas, prioridades e o cálculo da ordem dos cartões
 lib/supabase/        clientes Supabase (navegador, servidor e service_role)
 lib/supabase/sessao.js  usuário + perfil, e as guardas de rota da API

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Marca from '../../Marca';
 import Icone from '../../Icone';
 import TemaBotao from '../../TemaBotao';
+import Avisos from '../../Avisos';
 
 function dataCurta(iso) {
   if (!iso) return '—';
@@ -76,9 +77,13 @@ export default function EquipesClient({ equipesIniciais, erroInicial, email, nom
           <Link className="btn btn--mini" href="/admin/usuarios" title="Usuários">
             <Icone nome="usuarios" tamanho={14} /><span className="rotulo-btn">Usuários</span>
           </Link>
+          <Link className="btn btn--mini" href="/admin/avisos" title="Publicar avisos">
+            <Icone nome="sino" tamanho={14} /><span className="rotulo-btn">Avisos</span>
+          </Link>
           <Link className="btn btn--mini" href="/dashboard" title="Voltar">
             <Icone nome="esquerda" tamanho={14} /><span className="rotulo-btn">Voltar</span>
           </Link>
+          <Avisos mini />
           <TemaBotao />
         </div>
       </header>

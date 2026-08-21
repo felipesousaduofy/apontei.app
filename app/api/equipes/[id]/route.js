@@ -40,6 +40,11 @@ export async function DELETE(req, { params }) {
     return NextResponse.json({ erro: e.message }, { status: 500 });
   }
 
+  // avisos dirigidos a esta equipe perdem o destinatário junto com ela.
+  // destino_id é polimórfico e não tem FK, então a limpeza é na mão — ver o
+  // mesmo cuidado em /api/usuarios/[id].
+  await admin.from('avisos').delete().eq('destino', 'equipe').eq('destino_id', params.id);
+
   const { error } = await admin.from('equipes').delete().eq('id', params.id);
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

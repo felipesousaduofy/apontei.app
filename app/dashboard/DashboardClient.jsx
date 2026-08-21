@@ -11,6 +11,7 @@ import { nomeDaColuna, ordemEntre, ordenarPorUrgencia } from '@/lib/kanban';
 import Marca from '../Marca';
 import Icone from '../Icone';
 import TemaBotao from '../TemaBotao';
+import Avisos from '../Avisos';
 import { avisarNavegacao } from '../Progresso';
 import Regua from './Regua';
 import Resumo from './Resumo';
@@ -656,6 +657,7 @@ export default function DashboardClient({ email, nome: nomeInicial, ehAdmin, ehS
               <Icone nome="usuarios" tamanho={15} /><span className="rotulo-btn">Usuários</span>
             </Link>
           )}
+          <Avisos />
           <TemaBotao />
           <button
             className="btn btn--icone" onClick={sair} disabled={saindo}

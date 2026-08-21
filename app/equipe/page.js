@@ -14,6 +14,7 @@ export default async function PaginaEquipe() {
       email={user.email}
       nome={perfil.nome || ''}
       podeEditar={!!perfil.supervisor_pode_editar}
+      podeAvisar={!!perfil.supervisor_pode_avisar}
     />
   );
 }

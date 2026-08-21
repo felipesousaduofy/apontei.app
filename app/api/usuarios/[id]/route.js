@@ -19,6 +19,9 @@ export async function PATCH(req, { params }) {
   if (typeof corpo.supervisor_pode_editar === 'boolean') {
     alteracoes.supervisor_pode_editar = corpo.supervisor_pode_editar;
   }
+  if (typeof corpo.supervisor_pode_avisar === 'boolean') {
+    alteracoes.supervisor_pode_avisar = corpo.supervisor_pode_avisar;
+  }
   if ('equipe_id' in corpo) alteracoes.equipe_id = corpo.equipe_id || null;
 
   // só barra mexer na própria permissão de admin ou situação da conta —
@@ -126,6 +129,12 @@ export async function DELETE(req, { params }) {
       { status: 409 }
     );
   }
+
+  // avisos endereçados só a esta pessoa não têm mais destinatário. O
+  // destino_id é polimórfico (aponta ora para perfis, ora para equipes), então
+  // não existe FK que faça essa limpeza sozinha — se ficasse, viraria uma linha
+  // invisível para todo mundo e um "pessoa removida" na tela de gestão.
+  await admin.from('avisos').delete().eq('destino', 'usuario').eq('destino_id', params.id);
 
   // apaga a conta do Auth; perfis e config caem junto pelo on delete cascade
   const { error } = await admin.auth.admin.deleteUser(params.id);

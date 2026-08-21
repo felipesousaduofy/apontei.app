@@ -132,6 +132,9 @@ create table if not exists public.equipes (
 alter table public.perfis add column if not exists equipe_id uuid references public.equipes(id) on delete set null;
 alter table public.perfis add column if not exists is_supervisor boolean not null default false;
 alter table public.perfis add column if not exists supervisor_pode_editar boolean not null default false;
+-- permissão de publicar avisos para a própria equipe (seção de avisos, no fim
+-- do arquivo). Fica aqui em cima porque perfis_com_totais já precisa dela.
+alter table public.perfis add column if not exists supervisor_pode_avisar boolean not null default false;
 create index if not exists perfis_equipe on public.perfis (equipe_id);
 
 -- security definer para poder ser usada dentro das próprias políticas de
@@ -326,7 +329,8 @@ select
   p.equipe_id,
   e.nome as equipe_nome,
   p.is_supervisor,
-  p.supervisor_pode_editar
+  p.supervisor_pode_editar,
+  p.supervisor_pode_avisar
 from public.perfis p
 left join (
   select user_id, count(*) as total
@@ -353,3 +357,154 @@ update public.perfis
 set is_admin = true
 where not exists (select 1 from public.perfis outros where outros.is_admin)
   and id = (select id from public.perfis order by criado_em, id limit 1);
+
+-- ---------------------------------------------------------------
+-- avisos: recados publicados de cima para baixo (admin -> todo mundo,
+-- supervisor -> a própria equipe ou uma pessoa dela).
+--
+-- O alvo é guardado como REGRA ("todos", "a equipe X", "o usuário Y"), não
+-- como uma cópia por destinatário. É o que faz quem se cadastrar amanhã já
+-- entrar vendo o aviso de manutenção de sábado, sem ninguém ter que refazer
+-- o envio.
+--
+-- autor_nome e autor_papel são fotografia do momento do envio, de propósito:
+-- se o supervisor virar admin depois, o aviso antigo continua assinado como
+-- veio — e continua pintado com a cor de quem o escreveu na época.
+-- ---------------------------------------------------------------
+create table if not exists public.avisos (
+  id            uuid primary key default gen_random_uuid(),
+  titulo        text not null,
+  corpo         text not null default '',
+  tipo          text not null default 'informativo'
+                check (tipo in ('informativo', 'manutencao', 'melhoria')),
+  destino       text not null default 'todos'
+                check (destino in ('todos', 'equipe', 'usuario')),
+  destino_id    uuid,
+  -- quanto o aviso interrompe: só conta no sino, vira faixa no topo, ou abre
+  -- na frente da pessoa assim que chega. O check vem logo abaixo, com nome
+  -- próprio, para instalação nova e migração acabarem na mesma constraint.
+  exibicao      text not null default 'sino',
+  publicar_em   timestamptz not null default now(),
+  expira_em     timestamptz,
+  criado_por    uuid references auth.users(id) on delete set null,
+  autor_nome    text not null default '',
+  autor_papel   text not null default 'admin'
+                check (autor_papel in ('admin', 'supervisor')),
+  criado_em     timestamptz not null default now(),
+  atualizado_em timestamptz not null default now(),
+  -- "todos" não tem alvo; "equipe" e "usuario" não existem sem um
+  constraint avisos_destino_coerente check (
+    (destino = 'todos' and destino_id is null)
+    or (destino <> 'todos' and destino_id is not null)
+  )
+);
+
+create index if not exists avisos_vigencia on public.avisos (publicar_em desc);
+create index if not exists avisos_autor on public.avisos (criado_por);
+
+-- quem rodou a primeira versão desta seção tem "fixado" (boolean) em vez de
+-- "exibicao" (três níveis). Converte sem perder o que já estava publicado:
+-- fixado = true vira 'faixa', o resto vira 'sino'.
+alter table public.avisos add column if not exists exibicao text not null default 'sino';
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'avisos' and column_name = 'fixado'
+  ) then
+    update public.avisos set exibicao = case when fixado then 'faixa' else 'sino' end;
+    alter table public.avisos drop column fixado;
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'avisos_exibicao_valida' and conrelid = 'public.avisos'::regclass
+  ) then
+    alter table public.avisos add constraint avisos_exibicao_valida
+      check (exibicao in ('sino', 'faixa', 'tela'));
+  end if;
+end $$;
+
+-- Realtime: sem isto o navegador só descobre um aviso novo na próxima
+-- varredura (ou quando a pessoa recarrega a página). Com a tabela na
+-- publicação, o Supabase empurra o evento e a tela reage na hora.
+--
+-- O evento serve só de gatilho: o cliente refaz a busca pela API em vez de
+-- ler o conteúdo que veio no empurrão, para que quem enxerga o quê continue
+-- sendo decidido pela policy de RLS, e não pelo canal.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'avisos'
+  ) then
+    alter publication supabase_realtime add table public.avisos;
+  end if;
+exception
+  -- projeto sem Realtime habilitado: segue sem tempo real, no intervalo de
+  -- segurança do cliente. Não é motivo para o schema inteiro falhar.
+  when undefined_object then null;
+end $$;
+
+drop trigger if exists trg_avisos_atualizado on public.avisos;
+create trigger trg_avisos_atualizado
+  before update on public.avisos
+  for each row execute function public.tocar_atualizado_em();
+
+-- quem já leu o quê. Fica no banco, e não no localStorage, para o aviso não
+-- voltar do zero quando a pessoa abre o sistema no celular.
+create table if not exists public.avisos_lidos (
+  aviso_id uuid not null references public.avisos(id) on delete cascade,
+  user_id  uuid not null references auth.users(id) on delete cascade,
+  lido_em  timestamptz not null default now(),
+  primary key (aviso_id, user_id)
+);
+
+create index if not exists avisos_lidos_usuario on public.avisos_lidos (user_id);
+
+-- equipe da pessoa, para resolver o alvo "equipe" dentro da policy sem ler
+-- perfis direto (o que cairia na RLS da própria tabela)
+create or replace function public.minha_equipe(uid uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select equipe_id from public.perfis where id = uid and ativo;
+$$;
+
+alter table public.avisos enable row level security;
+alter table public.avisos_lidos enable row level security;
+
+-- só leitura por policy: publicar, editar e excluir passam por /api/avisos com
+-- a chave service_role, que é onde mora a regra de quem pode falar com quem.
+-- A vigência entra aqui dentro de propósito — aviso fora da janela não existe
+-- para o destinatário, nem por engano de uma tela que esqueceu de filtrar.
+drop policy if exists "avisos: destinatário lê" on public.avisos;
+create policy "avisos: destinatário lê" on public.avisos
+  for select using (
+    -- exigir sessão é o que impede o ramo "todos" de virar leitura pública:
+    -- as outras tabelas se protegem sozinhas porque comparam com auth.uid(),
+    -- que é nulo para o anônimo — aqui "todos" não compara com ninguém, e sem
+    -- esta linha um aviso de manutenção sairia com a chave anon, sem login.
+    auth.role() = 'authenticated'
+    and now() >= publicar_em
+    and (expira_em is null or now() < expira_em)
+    and (
+      destino = 'todos'
+      or (destino = 'usuario' and destino_id = auth.uid())
+      or (destino = 'equipe' and destino_id = public.minha_equipe(auth.uid()))
+    )
+  );
+
+-- o supervisor precisa ver quem da equipe leu o recado dele; supervisiona() é
+-- exatamente esse predicado e já existe para os lançamentos.
+drop policy if exists "avisos_lidos: dono lê" on public.avisos_lidos;
+drop policy if exists "avisos_lidos: dono ou supervisor lê" on public.avisos_lidos;
+create policy "avisos_lidos: dono ou supervisor lê" on public.avisos_lidos
+  for select using (auth.uid() = user_id or public.supervisiona(auth.uid(), user_id));
+
+drop policy if exists "avisos_lidos: dono marca" on public.avisos_lidos;
+create policy "avisos_lidos: dono marca" on public.avisos_lidos
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "avisos_lidos: dono desmarca" on public.avisos_lidos;
+create policy "avisos_lidos: dono desmarca" on public.avisos_lidos
+  for delete using (auth.uid() = user_id);
