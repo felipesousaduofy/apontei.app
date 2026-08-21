@@ -6,7 +6,7 @@ const CAMPOS_PERMITIDOS = ['data', 'inicio', 'fim', 'descricao', 'projeto', 'cha
 export async function PATCH(req, { params }) {
   const guarda = await exigirUsuario();
   if (guarda.resposta) return guarda.resposta;
-  const { supabase, user } = guarda;
+  const { supabase } = guarda;
 
   const corpo = await req.json();
   const alteracoes = {};
@@ -14,13 +14,13 @@ export async function PATCH(req, { params }) {
     if (campo in corpo) alteracoes[campo] = corpo[campo];
   }
 
-  // a política de RLS já impede editar registro de outra pessoa;
-  // o filtro por user_id aqui é só para retornar 404 em vez de um 200 vazio
+  // a política de RLS decide quem pode editar: o dono, ou um supervisor da
+  // mesma equipe com permissão de edição. Sem permissão, não bate nenhuma
+  // linha e o erro do .single() vira 404 abaixo.
   const { data, error } = await supabase
     .from('lancamentos')
     .update(alteracoes)
     .eq('id', params.id)
-    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -31,13 +31,12 @@ export async function PATCH(req, { params }) {
 export async function DELETE(req, { params }) {
   const guarda = await exigirUsuario();
   if (guarda.resposta) return guarda.resposta;
-  const { supabase, user } = guarda;
+  const { supabase } = guarda;
 
   const { error } = await supabase
     .from('lancamentos')
     .delete()
-    .eq('id', params.id)
-    .eq('user_id', user.id);
+    .eq('id', params.id);
 
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

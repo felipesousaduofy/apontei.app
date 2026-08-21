@@ -224,6 +224,7 @@ textarea.campo{resize:vertical;line-height:1.5}
   border:1px solid var(--linha-forte);color:var(--tinta-fraca);background:var(--ficha-alt);
 }
 .cracha--admin{background:var(--carimbo-claro);border-color:var(--carimbo-borda);color:var(--carimbo)}
+.cracha--supervisor{background:var(--ficha);border-color:var(--carimbo-borda);color:var(--carimbo)}
 .cracha--ativo{background:var(--ok-claro);border-color:var(--ok-borda);color:var(--ok)}
 .cracha--inativo{background:var(--lacuna-claro);border-color:var(--lacuna-borda);color:var(--lacuna)}
 .cracha--alta{background:var(--perigo-claro);border-color:var(--perigo-borda);color:var(--perigo)}
@@ -299,9 +300,59 @@ a.btn{text-decoration:none;color:inherit}
 .tabela tbody tr:hover{background:var(--ficha-alt)}
 .tabela tbody tr:last-child td{border-bottom:none}
 .tabela tbody tr.eu{background:var(--carimbo-claro)}
-.tabela td.vazio{padding:24px;text-align:center;color:var(--tinta-fantasma)}
-.celula-acoes{text-align:right;white-space:nowrap}
-.linha-acoes{display:flex;gap:6px;justify-content:flex-end}
+.tabela td.celula-vazia{padding:24px;text-align:center;color:var(--tinta-fantasma)}
+.celula-acoes{text-align:right}
+.linha-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pilha-crachas{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+
+/* barra de contexto: quem estou vendo e de que período. As duas escolhas
+   mandam na mesma listagem, então moram no mesmo bloco em vez de empilhadas */
+.barra-filtro{
+  display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;
+  background:var(--ficha);border:1px solid var(--linha-forte);
+  border-radius:var(--r-md);box-shadow:var(--e-2);
+  padding:14px 16px;margin-bottom:18px;
+}
+.barra-filtro__campo{display:flex;flex-direction:column;gap:6px;flex:0 1 280px;min-width:210px}
+.barra-filtro__rot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.barra-filtro .controles-periodo{margin-left:auto}
+@media (max-width:720px){
+  .barra-filtro__campo{flex:1 1 100%}
+  .barra-filtro .controles-periodo{margin-left:0}
+}
+
+/* menu de ações da linha: uma conta tem meia dúzia de ações e enfileirá-las na
+   célula empurrava a tabela para a rolagem horizontal. O painel é fixed porque
+   .quadro tem overflow:hidden — dentro do fluxo ele seria recortado. */
+.menu-fundo{position:fixed;inset:0;z-index:60}
+.menu{
+  position:fixed;z-index:61;min-width:224px;max-width:280px;padding:6px;
+  background:var(--ficha);border:1px solid var(--linha-forte);
+  border-radius:var(--r-md);box-shadow:var(--e-3);overflow-y:auto;
+}
+.menu__titulo{
+  font-family:var(--fonte-rotulo);font-size:var(--t-xs);text-transform:uppercase;
+  letter-spacing:.09em;color:var(--tinta-fantasma);padding:7px 10px 5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.menu__item{
+  display:flex;align-items:center;gap:9px;width:100%;
+  background:none;border:none;border-radius:var(--r);
+  padding:8px 10px;font:inherit;font-size:var(--t-sm);color:var(--tinta);
+  text-align:left;cursor:pointer;
+  transition:background var(--mov-rapido),color var(--mov-rapido);
+}
+.menu__item:hover:not(:disabled){background:var(--ficha-alt);color:var(--carimbo)}
+.menu__item:disabled{opacity:.45;cursor:not-allowed}
+.menu__item svg{flex:none;color:var(--tinta-fantasma)}
+.menu__item:hover:not(:disabled) svg{color:var(--carimbo)}
+.menu__item--perigo{color:var(--perigo)}
+.menu__item--perigo:hover:not(:disabled){background:var(--perigo-claro);color:var(--perigo)}
+.menu__item--perigo svg,.menu__item--perigo:hover:not(:disabled) svg{color:var(--perigo)}
+.menu__sep{height:1px;background:var(--linha);margin:5px 4px}
+.menu__nota{
+  font-size:var(--t-xs);color:var(--tinta-fantasma);padding:6px 10px 4px;line-height:1.45;
+}
 
 /* ---------- cabeçalho fixo do diário ---------- */
 .cab{
@@ -311,13 +362,17 @@ a.btn{text-decoration:none;color:inherit}
 }
 .cab__marca{display:flex;align-items:center;gap:10px;margin-right:auto}
 .cab__marca > span{font-size:12px;color:var(--tinta-fantasma)}
-.cab__dia{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.cab__dia input[type=date]{
+/* o mesmo grupo de controles serve ao cabeçalho do diário e à barra da tela de
+   equipe — o nome sem prefixo é o que pode ser usado fora do .cab */
+.cab__dia,.controles-periodo{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.cab__dia input[type=date],.controles-periodo input[type=date]{
   border:1px solid var(--linha-forte);background:var(--ficha);border-radius:var(--r);
   padding:6px 8px;font-family:var(--fonte-num);font-size:var(--t-sm);
   transition:border-color var(--mov-rapido),background var(--mov-rapido);
 }
-.cab__dia input[type=date]:hover{border-color:var(--tinta-fantasma)}
+.cab__dia input[type=date]:hover,.controles-periodo input[type=date]:hover{
+  border-color:var(--tinta-fantasma);
+}
 .cab__rotulo{font-size:var(--t-sm);color:var(--tinta-fraca);margin-left:4px;white-space:nowrap}
 .cab__acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .seta{
@@ -355,6 +410,9 @@ a.btn{text-decoration:none;color:inherit}
   display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;
   padding:20px 20px 0;
 }
+/* dentro de .pagina o recuo já vem do container — sem isto o resumo fica
+   desalinhado das outras caixas da tela */
+.resumo--solto{padding:0}
 .kpi{
   background:var(--ficha);border:1px solid var(--linha-forte);border-radius:var(--r-md);
   padding:13px 15px 14px;box-shadow:var(--e-1);
@@ -636,6 +694,9 @@ a.btn{text-decoration:none;color:inherit}
 .lanc--fora .lanc__linha{opacity:.45}
 .lanc--fora .lanc__dur{text-decoration:line-through}
 .lanc--fora::before{opacity:.35}
+/* sem a caixa de seleção some o recuo que ela dava: a linha volta a respirar */
+.lista--sem-selecao .lanc__linha{padding-left:16px}
+.lista--sem-selecao .lanc__editor{padding-left:16px}
 .lanc__editor{padding:0 14px 14px 16px}
 .lanc__editor-acoes{display:flex;gap:8px;margin-top:12px}
 .lanc__editor-acoes .btn--perigo{margin-left:auto}
@@ -693,6 +754,32 @@ a.btn{text-decoration:none;color:inherit}
 }
 .opcoes label{display:flex;align-items:center;gap:5px;cursor:pointer}
 .opcoes input[type=radio],.opcoes input[type=checkbox]{accent-color:var(--carimbo)}
+/* O painel crescia junto com o número de atividades e esticava a página inteira
+   — com 20 registros a tela passava dos 3000px. Agora ele ocupa no máximo a
+   altura da janela: cabeçalho, opções e total ficam sempre à vista e só a pilha
+   de blocos rola por dentro. A medida de --alt-cab vem do próprio cabeçalho
+   (ver medirCab no DashboardClient); o 64px é só o palpite até a medição rodar. */
+@media (min-width:981px){
+  .painel--consolidado{
+    position:sticky;top:calc(var(--alt-cab,64px) + 20px);
+    max-height:calc(100vh - var(--alt-cab,64px) - 40px);
+    display:flex;flex-direction:column;
+  }
+  .painel--consolidado .consolidado__grupos{
+    flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  }
+  /* sem isto o flex espreme cabeçalho, opções e total junto com a lista
+     quando o painel encosta no limite de altura */
+  .painel--consolidado > .painel__cab,
+  .painel--consolidado > .opcoes,
+  .painel--consolidado > .total-dia{flex:none}
+}
+/* coluna única: o painel cai abaixo da lista e grudar não faria sentido, mas
+   deixar solto traria de volta a página quilométrica */
+@media (max-width:980px){
+  .consolidado__grupos{max-height:75vh;overflow-y:auto;overscroll-behavior:contain}
+}
+
 .total-dia{
   display:flex;align-items:baseline;padding:12px 14px;
   border-top:1px solid var(--linha-forte);background:var(--ficha-alt);

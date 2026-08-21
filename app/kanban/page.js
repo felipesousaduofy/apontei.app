@@ -18,6 +18,7 @@ export default async function PaginaKanban() {
     <KanbanClient
       tarefasIniciais={tarefas || []}
       email={user.email}
+      nome={perfil?.nome || ''}
       ehAdmin={!!perfil?.is_admin}
     />
   );

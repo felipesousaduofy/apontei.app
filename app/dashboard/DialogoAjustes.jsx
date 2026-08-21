@@ -5,10 +5,12 @@ import Icone from '../Icone';
 import { CONFIG_PADRAO, hmParaMin } from '@/lib/apontamento';
 
 export default function DialogoAjustes({
-  config, aoFechar, aoSalvar, aoExportarCsv, aoExportarJson, aoImportar, aoApagarTudo
+  config, nome, email, aoFechar, aoSalvar, aoSalvarNome,
+  aoExportarCsv, aoExportarJson, aoImportar, aoApagarTudo
 }) {
   const [form, setForm] = useState({
     ...config,
+    nome: nome || '',
     projetos: (config.projetos || []).join('\n'),
     categorias: (config.categorias || []).join('\n')
   });
@@ -34,6 +36,14 @@ export default function DialogoAjustes({
     }
     setErro('');
     setSalvando(true);
+
+    // o nome mora em perfis, não em config: só vai ao servidor se mudou, e se
+    // falhar não adianta seguir gravando o resto como se tivesse dado tudo certo
+    if (aoSalvarNome && form.nome.trim() !== (nome || '').trim()) {
+      const ok = await aoSalvarNome(form.nome);
+      if (!ok) { setSalvando(false); return; }
+    }
+
     await aoSalvar({
       arredondamento: Number(form.arredondamento),
       inicio_dia: form.inicio_dia || '08:00',
@@ -64,6 +74,20 @@ export default function DialogoAjustes({
 
       <div className="dlg__corpo">
         {erro && <div className="erro-auth">{erro}</div>}
+
+        <div className="bloco-campo">
+          <span className="rotulo campo-rot">Seu nome</span>
+          <input
+            className="campo" maxLength={60} placeholder="Como você quer aparecer no apontei"
+            value={form.nome} onChange={e => mudar('nome', e.target.value)}
+          />
+          <p className="ajuda">
+            É o que aparece no lugar do e-mail pelas telas — inclusive para quem
+            supervisiona a equipe. Deixando em branco, volta a mostrar {email}.
+          </p>
+        </div>
+
+        <hr className="divisor" />
 
         <div className="grade grade--4" style={{ marginBottom: 14 }}>
           <div>

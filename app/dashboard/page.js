@@ -11,5 +11,12 @@ export default async function Dashboard() {
   const { user, perfil } = await usuarioComPerfil();
   if (!user) redirect('/login');
 
-  return <DashboardClient email={user.email} ehAdmin={!!perfil?.is_admin} />;
+  return (
+    <DashboardClient
+      email={user.email}
+      nome={perfil?.nome || ''}
+      ehAdmin={!!perfil?.is_admin}
+      ehSupervisor={!!perfil?.is_supervisor}
+    />
+  );
 }

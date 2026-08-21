@@ -88,6 +88,37 @@ const DESENHOS = {
     </>
   ),
   fechar: <path d="M6 6l12 12M18 6 6 18" />,
+  maisOpcoes: (
+    <>
+      <circle cx="12" cy="5.2" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="18.8" r="1.6" fill="currentColor" stroke="none" />
+    </>
+  ),
+  chave: (
+    <>
+      <circle cx="8" cy="15.5" r="4.3" />
+      <path d="M11.2 12.6 19.5 4.3M16.6 7.2l2.4 2.4M14.4 9.4l2.4 2.4" />
+    </>
+  ),
+  escudo: (
+    <>
+      <path d="M12 3.2 5 6v6c0 4.2 2.9 7.4 7 8.8 4.1-1.4 7-4.6 7-8.8V6l-7-2.8Z" />
+      <path d="M9.2 12.2 11.3 14.3l3.7-3.9" />
+    </>
+  ),
+  olho: (
+    <>
+      <path d="M2.6 12S6.3 5.9 12 5.9 21.4 12 21.4 12 17.7 18.1 12 18.1 2.6 12 2.6 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  bloquear: (
+    <>
+      <circle cx="12" cy="12" r="8.8" />
+      <path d="M5.8 5.8l12.4 12.4" />
+    </>
+  ),
   seleciona: (
     <>
       <rect x="3.5" y="3.5" width="17" height="17" rx="3" />

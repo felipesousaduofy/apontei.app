@@ -9,7 +9,7 @@ import Icone from '../Icone';
 export default function ListaLancamentos({
   lancamentos, dia, modo, config, abertos, selecionados,
   aoAlternarAberto, aoAlternarSelecao, aoEditarCampo, aoGravarCampo, aoExcluir,
-  aoLancarManual
+  aoLancarManual, somenteLeitura = false, semSelecao = false
 }) {
   if (!lancamentos.length) {
     return (
@@ -20,9 +20,11 @@ export default function ListaLancamentos({
             Nenhum registro em {modo === 'semana' ? rotuloDoPeriodo(dia, modo) : dataBR(dia)}
           </p>
           <p className="vazio-estado__texto">
-            {modo === 'semana'
-              ? 'Volte para a visão de dia para começar a registrar o que foi feito.'
-              : 'Escreva no campo acima e tecle Enter, ou lance um horário que já passou.'}
+            {somenteLeitura
+              ? 'Nada foi apontado neste período.'
+              : modo === 'semana'
+                ? 'Volte para a visão de dia para começar a registrar o que foi feito.'
+                : 'Escreva no campo acima e tecle Enter, ou lance um horário que já passou.'}
           </p>
           {modo !== 'semana' && aoLancarManual && (
             <button className="btn btn--mini" onClick={aoLancarManual}>
@@ -37,10 +39,13 @@ export default function ListaLancamentos({
   let diaAtual = null;
 
   return (
-    <ul className="lista">
+    <ul className={'lista' + (semSelecao ? ' lista--sem-selecao' : '')}>
       {lancamentos.map(l => {
         const aberto = abertos.has(l.id);
         const marcado = selecionados.has(l.id);
+        // "fora" é o que sai do texto para apontar; sem a caixa de seleção na
+        // tela não existe dentro nem fora, e riscar tudo seria mentira
+        const fora = !semSelecao && !marcado;
 
         let separador = null;
         if (modo === 'semana' && l.data !== diaAtual) {
@@ -73,21 +78,23 @@ export default function ListaLancamentos({
             {separador}
             <li
               id={`lanc-${l.id}`}
-              className={'lanc' + (aberto ? ' lanc--aberto' : '') + (marcado ? '' : ' lanc--fora')}
+              className={'lanc' + (aberto ? ' lanc--aberto' : '') + (fora ? ' lanc--fora' : '')}
               // sem categoria não há faixa: a cor só significa algo quando foi escolhida
               style={l.categoria
                 ? { '--cor-lanc': corCategoria(l.categoria, config.categorias) }
                 : undefined}
             >
               <div className="lanc__topo">
-                <label className="lanc__sel" title="Incluir esta atividade no texto para apontar">
-                  <input
-                    type="checkbox"
-                    checked={marcado}
-                    onChange={() => aoAlternarSelecao(l.id)}
-                    aria-label="Incluir no texto para apontar"
-                  />
-                </label>
+                {!semSelecao && (
+                  <label className="lanc__sel" title="Incluir esta atividade no texto para apontar">
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      onChange={() => aoAlternarSelecao(l.id)}
+                      aria-label="Incluir no texto para apontar"
+                    />
+                  </label>
+                )}
 
                 <button className="lanc__linha" aria-expanded={aberto} onClick={() => aoAlternarAberto(l.id)}>
                   <span className="lanc__horas">{l.inicio}–{l.fim || '···'}</span>
@@ -117,29 +124,29 @@ export default function ListaLancamentos({
                   <div className="grade grade--4" style={{ marginBottom: 10 }}>
                     <div>
                       <span className="rotulo campo-rot">Início</span>
-                      <input type="time" className="campo" {...texto('inicio')} />
+                      <input type="time" className="campo" disabled={somenteLeitura} {...texto('inicio')} />
                     </div>
                     <div>
                       <span className="rotulo campo-rot">Fim</span>
-                      <input type="time" className="campo" {...texto('fim')} />
+                      <input type="time" className="campo" disabled={somenteLeitura} {...texto('fim')} />
                     </div>
                     <div>
                       <span className="rotulo campo-rot">Chamado</span>
-                      <input className="campo" list="listaChamados" {...texto('chamado')} />
+                      <input className="campo" list="listaChamados" disabled={somenteLeitura} {...texto('chamado')} />
                     </div>
                     <div>
                       <span className="rotulo campo-rot">Projeto</span>
-                      <input className="campo" list="listaProjetos" {...texto('projeto')} />
+                      <input className="campo" list="listaProjetos" disabled={somenteLeitura} {...texto('projeto')} />
                     </div>
                   </div>
 
                   <span className="rotulo campo-rot">Descrição</span>
-                  <textarea className="campo" rows={6} {...texto('descricao')} />
+                  <textarea className="campo" rows={6} disabled={somenteLeitura} {...texto('descricao')} />
 
                   <div className="grade" style={{ marginTop: 10 }}>
                     <div>
                       <span className="rotulo campo-rot">Categoria</span>
-                      <select className="campo" {...escolha('categoria')}>
+                      <select className="campo" disabled={somenteLeitura} {...escolha('categoria')}>
                         <option value="">—</option>
                         {!config.categorias.includes(l.categoria) && l.categoria && (
                           <option value={l.categoria}>{l.categoria}</option>
@@ -149,7 +156,7 @@ export default function ListaLancamentos({
                     </div>
                     <div>
                       <span className="rotulo campo-rot">Observação interna</span>
-                      <input className="campo" {...texto('obs')} />
+                      <input className="campo" disabled={somenteLeitura} {...texto('obs')} />
                     </div>
                   </div>
 
@@ -157,9 +164,11 @@ export default function ListaLancamentos({
                     <button className="btn" onClick={() => aoAlternarAberto(l.id)}>
                       <Icone nome="fechar" tamanho={15} />Fechar
                     </button>
-                    <button className="btn btn--perigo" onClick={() => aoExcluir(l)}>
-                      <Icone nome="lixeira" tamanho={15} />Excluir
-                    </button>
+                    {!somenteLeitura && (
+                      <button className="btn btn--perigo" onClick={() => aoExcluir(l)}>
+                        <Icone nome="lixeira" tamanho={15} />Excluir
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

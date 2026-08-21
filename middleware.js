@@ -31,7 +31,8 @@ export async function middleware(req) {
   const { data: { user } } = await supabase.auth.getUser();
   const caminho = req.nextUrl.pathname;
   const rotaAdmin = caminho.startsWith('/admin');
-  const rotaProtegida = caminho.startsWith('/dashboard') || caminho.startsWith('/kanban') || rotaAdmin;
+  const rotaEquipe = caminho.startsWith('/equipe');
+  const rotaProtegida = caminho.startsWith('/dashboard') || caminho.startsWith('/kanban') || rotaAdmin || rotaEquipe;
   const rotaAuth = caminho === '/login' || caminho === '/signup';
   const rotaTrocarSenha = caminho === '/trocar-senha';
 
@@ -45,7 +46,7 @@ export async function middleware(req) {
   // ninguém para fora do sistema.
   const { data: perfil } = await supabase
     .from('perfis')
-    .select('is_admin, ativo, deve_trocar_senha')
+    .select('is_admin, ativo, deve_trocar_senha, is_supervisor')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -70,10 +71,13 @@ export async function middleware(req) {
   }
 
   if (rotaAdmin && !perfil?.is_admin) return NextResponse.redirect(irPara(req, '/dashboard'));
+  if (rotaEquipe && !perfil?.is_supervisor) return NextResponse.redirect(irPara(req, '/dashboard'));
 
   return res;
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/kanban/:path*', '/admin/:path*', '/login', '/signup', '/trocar-senha']
+  matcher: [
+    '/dashboard/:path*', '/kanban/:path*', '/admin/:path*', '/equipe/:path*', '/login', '/signup', '/trocar-senha'
+  ]
 };

@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Marca from '../../Marca';
 import Icone from '../../Icone';
@@ -13,7 +13,10 @@ function dataCurta(iso) {
   return `${dia}/${mes}/${ano}`;
 }
 
-export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, email }) {
+export default function UsuariosClient({
+  usuariosIniciais, equipesIniciais, erroInicial, meuId, email, nome
+}) {
+  const equipes = equipesIniciais || [];
   const [usuarios, setUsuarios] = useState(usuariosIniciais);
   const [erro, setErro] = useState(erroInicial || '');
   const [aviso, setAviso] = useState('');
@@ -24,9 +27,45 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
   const [senhaResultado, setSenhaResultado] = useState(null); // { email, senha }
   const [copiado, setCopiado] = useState(false);
   const [atualizando, setAtualizando] = useState(false);
+  const [menu, setMenu] = useState(null); // { id, topo, direita }
   const cronometroAviso = useRef(null);
 
   const admins = usuarios.filter(u => u.is_admin).length;
+  // lido da lista, não guardado no estado do menu: assim os rótulos do menu
+  // ("Tornar" vira "Remover") acompanham a alteração sem precisar reabrir
+  const doMenu = menu ? usuarios.find(u => u.id === menu.id) : null;
+  const menuOcupado = !!doMenu && ocupado === doMenu.id;
+
+  // rolar a página moveria a linha e deixaria o painel — que é fixed — solto no
+  // meio da tela; fechar é mais honesto do que ficar recalculando a posição
+  useEffect(() => {
+    if (!menu) return;
+    const fechar = () => setMenu(null);
+    const naTecla = e => { if (e.key === 'Escape') setMenu(null); };
+    window.addEventListener('scroll', fechar, true);
+    window.addEventListener('resize', fechar);
+    window.addEventListener('keydown', naTecla);
+    return () => {
+      window.removeEventListener('scroll', fechar, true);
+      window.removeEventListener('resize', fechar);
+      window.removeEventListener('keydown', naTecla);
+    };
+  }, [menu]);
+
+  // abre abaixo do botão; nas últimas linhas da tabela não caberia embaixo,
+  // então ancora pelo rodapé e sobe. A altura máxima é o espaço que sobrar —
+  // o painel rola por dentro em vez de vazar da tela.
+  function abrirMenu(e, usuario) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const direita = window.innerWidth - r.right;
+    const abaixo = window.innerHeight - r.bottom - 12;
+    const acima = r.top - 12;
+    const paraCima = abaixo < 300 && acima > abaixo;
+
+    setMenu(paraCima
+      ? { id: usuario.id, base: window.innerHeight - r.top + 6, direita, limite: acima }
+      : { id: usuario.id, topo: r.bottom + 6, direita, limite: abaixo });
+  }
 
   function mostrarAviso(texto) {
     setAviso(texto);
@@ -44,6 +83,7 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
 
   function abrirDefinirSenha(usuario) {
     setErro('');
+    setMenu(null);
     setCampoSenhaManual(gerarSenhaTemporaria());
     setAlvoSenhaManual(usuario);
   }
@@ -70,6 +110,7 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
 
   async function resetarSenha(usuario) {
     setErro('');
+    setMenu(null);
     setOcupado(usuario.id);
     const resp = await fetch(`/api/usuarios/${usuario.id}/resetar-senha`, { method: 'POST' });
     const corpo = await resp.json().catch(() => ({}));
@@ -145,7 +186,7 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
       <header className="topo">
         <Marca altura={34} />
         <span className="rotulo">Usuários</span>
-        <span className="email">{email}</span>
+        <span className="email" title={email}>{nome || email}</span>
         <div className="acoes">
           <button
             className="btn btn--mini" onClick={atualizarLista} disabled={atualizando}
@@ -154,6 +195,9 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
             {atualizando ? <span className="giro" /> : <Icone nome="relogio" tamanho={14} />}
             <span className="rotulo-btn">{atualizando ? 'Atualizando…' : 'Atualizar'}</span>
           </button>
+          <Link className="btn btn--mini" href="/admin/equipes" title="Equipes">
+            <Icone nome="colunas" tamanho={14} /><span className="rotulo-btn">Equipes</span>
+          </Link>
           <Link className="btn btn--mini" href="/dashboard" title="Voltar">
             <Icone nome="esquerda" tamanho={14} /><span className="rotulo-btn">Voltar</span>
           </Link>
@@ -176,6 +220,7 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
               <th>Cadastro</th>
               <th style={{ textAlign: 'right' }}>Lançamentos</th>
               <th>Permissão</th>
+              <th>Equipe</th>
               <th>Situação</th>
               <th style={{ textAlign: 'right' }}>Ações</th>
             </tr>
@@ -183,13 +228,12 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
           <tbody>
             {usuarios.length === 0 && (
               <tr>
-                <td className="vazio" colSpan={6}>Nenhum usuário cadastrado.</td>
+                <td className="celula-vazia" colSpan={7}>Nenhum usuário cadastrado.</td>
               </tr>
             )}
             {usuarios.map(u => {
               const souEu = u.id === meuId;
               const travado = ocupado === u.id;
-              const temLancamentos = u.total_lancamentos > 0;
 
               return (
                 <tr key={u.id} className={souEu ? 'eu' : undefined}>
@@ -201,9 +245,31 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
                   <td className="num">{dataCurta(u.criado_em)}</td>
                   <td className="num" style={{ textAlign: 'right' }}>{u.total_lancamentos}</td>
                   <td>
-                    <span className={u.is_admin ? 'cracha cracha--admin' : 'cracha'}>
-                      {u.is_admin ? 'Admin' : 'Usuário'}
-                    </span>
+                    <div className="pilha-crachas">
+                      <span className={u.is_admin ? 'cracha cracha--admin' : 'cracha'}>
+                        {u.is_admin ? 'Admin' : 'Usuário'}
+                      </span>
+                      {u.is_supervisor && (
+                        <span
+                          className="cracha cracha--supervisor"
+                          title={u.supervisor_pode_editar
+                            ? 'Vê e edita os lançamentos da equipe'
+                            : 'Só vê os lançamentos da equipe'}
+                        >
+                          Supervisor {u.supervisor_pode_editar ? '· edita' : '· vê'}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <select
+                      className="campo" style={{ minWidth: 140 }}
+                      value={u.equipe_id || ''} disabled={travado}
+                      onChange={e => alterar(u, { equipe_id: e.target.value || null })}
+                    >
+                      <option value="">sem equipe</option>
+                      {equipes.map(eq => <option key={eq.id} value={eq.id}>{eq.nome}</option>)}
+                    </select>
                   </td>
                   <td>
                     <span className={u.ativo ? 'cracha cracha--ativo' : 'cracha cracha--inativo'}>
@@ -212,54 +278,17 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
                     {u.deve_trocar_senha && <div className="dica">precisa trocar a senha</div>}
                   </td>
                   <td className="celula-acoes">
-                    {souEu ? (
-                      <span className="dica">sem ações na própria conta</span>
-                    ) : (
-                      <div className="linha-acoes">
-                        <button
-                          className="btn btn--mini"
-                          disabled={travado}
-                          onClick={() => alterar(u, { is_admin: !u.is_admin })}
-                        >
-                          {u.is_admin ? 'Remover admin' : 'Tornar admin'}
-                        </button>
-                        <button
-                          className="btn btn--mini"
-                          disabled={travado}
-                          onClick={() => alterar(u, { ativo: !u.ativo })}
-                        >
-                          {u.ativo ? 'Desativar' : 'Ativar'}
-                        </button>
-                        <button
-                          className="btn btn--mini"
-                          disabled={travado}
-                          title="Envia um e-mail para o usuário definir uma nova senha"
-                          onClick={() => resetarSenha(u)}
-                        >
-                          Resetar senha
-                        </button>
-                        <button
-                          className="btn btn--mini"
-                          disabled={travado}
-                          title="Define uma senha temporária na hora — use se o e-mail não estiver funcionando"
-                          onClick={() => abrirDefinirSenha(u)}
-                        >
-                          Definir senha
-                        </button>
-                        <button
-                          className="btn btn--mini btn--perigo"
-                          disabled={travado || temLancamentos}
-                          title={
-                            temLancamentos
-                              ? 'Só dá para excluir quem não tem nenhum lançamento. Desative a conta.'
-                              : 'Excluir definitivamente'
-                          }
-                          onClick={() => setAlvoExcluir(u)}
-                        >
-                          <Icone nome="lixeira" tamanho={13} />Excluir
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      className="btn btn--mini btn--icone"
+                      disabled={travado}
+                      aria-haspopup="menu"
+                      aria-expanded={menu?.id === u.id}
+                      title={`Ações de ${u.nome || u.email}`}
+                      aria-label={`Ações de ${u.nome || u.email}`}
+                      onClick={e => (menu?.id === u.id ? setMenu(null) : abrirMenu(e, u))}
+                    >
+                      {travado ? <span className="giro" /> : <Icone nome="maisOpcoes" tamanho={15} />}
+                    </button>
                   </td>
                 </tr>
               );
@@ -273,6 +302,102 @@ export default function UsuariosClient({ usuariosIniciais, erroInicial, meuId, e
         lançamentos dela. Excluir só é permitido para contas sem nenhum
         lançamento, e apaga a conta de vez.
       </p>
+
+      {doMenu && (
+        <>
+          <div className="menu-fundo" onClick={() => setMenu(null)} />
+          <div
+            className="menu" role="menu"
+            style={{ top: menu.topo, bottom: menu.base, right: menu.direita, maxHeight: menu.limite }}
+          >
+            <div className="menu__titulo">{doMenu.nome || doMenu.email}</div>
+
+            <button
+              className="menu__item" role="menuitem" disabled={menuOcupado}
+              onClick={() => alterar(doMenu, { is_supervisor: !doMenu.is_supervisor })}
+            >
+              <Icone nome="usuarios" tamanho={15} />
+              {doMenu.is_supervisor ? 'Deixar de ser supervisor' : 'Tornar supervisor da equipe'}
+            </button>
+            {doMenu.is_supervisor && (
+              <button
+                className="menu__item" role="menuitem" disabled={menuOcupado}
+                onClick={() => alterar(doMenu, { supervisor_pode_editar: !doMenu.supervisor_pode_editar })}
+              >
+                <Icone nome={doMenu.supervisor_pode_editar ? 'olho' : 'lapis'} tamanho={15} />
+                {doMenu.supervisor_pode_editar
+                  ? 'Restringir a só visualizar'
+                  : 'Permitir editar lançamentos'}
+              </button>
+            )}
+            {doMenu.is_supervisor && !doMenu.equipe_id && (
+              <div className="menu__nota">
+                Sem equipe, não supervisiona ninguém — escolha uma equipe na coluna Equipe.
+              </div>
+            )}
+
+            {doMenu.id !== meuId && (
+              <>
+                <div className="menu__sep" />
+                <button
+                  className="menu__item" role="menuitem"
+                  onClick={() => alterar(doMenu, { is_admin: !doMenu.is_admin })}
+                >
+                  <Icone nome="escudo" tamanho={15} />
+                  {doMenu.is_admin ? 'Remover permissão de admin' : 'Tornar administrador'}
+                </button>
+
+                <div className="menu__sep" />
+                <button
+                  className="menu__item" role="menuitem" disabled={menuOcupado}
+                  onClick={() => resetarSenha(doMenu)}
+                >
+                  <Icone nome="sino" tamanho={15} />
+                  Enviar e-mail de redefinição
+                </button>
+                <button
+                  className="menu__item" role="menuitem" disabled={menuOcupado}
+                  onClick={() => abrirDefinirSenha(doMenu)}
+                >
+                  <Icone nome="chave" tamanho={15} />
+                  Definir senha manualmente
+                </button>
+
+                <div className="menu__sep" />
+                <button
+                  className="menu__item" role="menuitem"
+                  onClick={() => alterar(doMenu, { ativo: !doMenu.ativo })}
+                >
+                  <Icone nome={doMenu.ativo ? 'bloquear' : 'seleciona'} tamanho={15} />
+                  {doMenu.ativo ? 'Desativar conta' : 'Reativar conta'}
+                </button>
+                <button
+                  className="menu__item menu__item--perigo" role="menuitem"
+                  disabled={menuOcupado || doMenu.total_lancamentos > 0}
+                  title={doMenu.total_lancamentos > 0
+                    ? 'Só dá para excluir quem não tem nenhum lançamento. Desative a conta.'
+                    : undefined}
+                  onClick={() => { setMenu(null); setAlvoExcluir(doMenu); }}
+                >
+                  <Icone nome="lixeira" tamanho={15} />
+                  Excluir conta
+                </button>
+                {doMenu.total_lancamentos > 0 && (
+                  <div className="menu__nota">
+                    Tem {doMenu.total_lancamentos} lançamento(s): desative em vez de excluir.
+                  </div>
+                )}
+              </>
+            )}
+
+            {doMenu.id === meuId && (
+              <div className="menu__nota">
+                Sua própria conta: permissão de admin e situação não podem ser alteradas por aqui.
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {alvoExcluir && (
         <div className="modal-fundo" role="dialog" aria-modal="true">

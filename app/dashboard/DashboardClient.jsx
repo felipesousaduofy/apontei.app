@@ -30,8 +30,27 @@ const MANUAL_VAZIO = {
   chamado: '', projeto: '', categoria: '', obs: ''
 };
 
-export default function DashboardClient({ email, ehAdmin }) {
+export default function DashboardClient({ email, nome: nomeInicial, ehAdmin, ehSupervisor }) {
   const router = useRouter();
+
+  // nome de exibição: cai no e-mail enquanto a pessoa não preencher nos ajustes
+  const [nome, setNome] = useState(nomeInicial || '');
+  const comoChamar = nome || email;
+
+  // o painel do texto para apontar gruda logo abaixo do cabeçalho, e o
+  // cabeçalho muda de altura conforme quebra em mais linhas. Medir é o único
+  // jeito de o encosto ficar certo em qualquer largura — sem isso o painel
+  // some por baixo da barra ou sobra um vão.
+  const observadorCab = useRef(null);
+  const medirCab = useCallback(node => {
+    observadorCab.current?.disconnect();
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const medir = () =>
+      document.documentElement.style.setProperty('--alt-cab', `${node.offsetHeight}px`);
+    medir();
+    observadorCab.current = new ResizeObserver(medir);
+    observadorCab.current.observe(node);
+  }, []);
 
   // o dia começa nulo e só é definido depois de montar: o servidor roda em UTC
   // e, à noite no Brasil, já estaria no dia seguinte
@@ -513,6 +532,25 @@ export default function DashboardClient({ email, ehAdmin }) {
 
   /* ---------- ajustes ---------- */
 
+  /** Devolve true/false para o diálogo saber se pode seguir gravando o resto. */
+  async function salvarNome(novo) {
+    const resp = await fetch('/api/perfil', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome: novo })
+    });
+    const corpo = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      setErro(corpo.erro || 'Não foi possível salvar seu nome.');
+      return false;
+    }
+    setNome(corpo.perfil.nome);
+    // as outras telas recebem o nome pelo servidor: sem isto o quadro e a tela
+    // de equipe continuariam mostrando o e-mail até um recarregamento
+    router.refresh();
+    return true;
+  }
+
   async function salvarConfig(mudancas, silencioso) {
     const resp = await fetch('/api/config', {
       method: 'PATCH',
@@ -540,10 +578,10 @@ export default function DashboardClient({ email, ehAdmin }) {
   if (!dia || !config) {
     return (
       <>
-        <header className="cab">
+        <header className="cab" ref={medirCab}>
           <div className="cab__marca">
             <Marca altura={40} />
-            <span>{email}</span>
+            <span title={email}>{comoChamar}</span>
           </div>
           <div className="cab__acoes"><TemaBotao /></div>
         </header>
@@ -560,10 +598,10 @@ export default function DashboardClient({ email, ehAdmin }) {
 
   return (
     <>
-      <header className="cab">
+      <header className="cab" ref={medirCab}>
         <div className="cab__marca">
           <Marca altura={40} />
-          <span>{email}</span>
+          <span title={email}>{comoChamar}</span>
         </div>
 
         <div className="cab__dia">
@@ -608,6 +646,11 @@ export default function DashboardClient({ email, ehAdmin }) {
           <Link className="btn" href="/kanban" title="Quadro">
             <Icone nome="colunas" tamanho={15} /><span className="rotulo-btn">Quadro</span>
           </Link>
+          {ehSupervisor && (
+            <Link className="btn" href="/equipe" title="Equipe">
+              <Icone nome="usuarios" tamanho={15} /><span className="rotulo-btn">Equipe</span>
+            </Link>
+          )}
           {ehAdmin && (
             <Link className="btn" href="/admin/usuarios" title="Usuários">
               <Icone nome="usuarios" tamanho={15} /><span className="rotulo-btn">Usuários</span>
@@ -847,8 +890,11 @@ export default function DashboardClient({ email, ehAdmin }) {
       {ajustes && (
         <DialogoAjustes
           config={config}
+          nome={nome}
+          email={email}
           aoFechar={() => setAjustes(false)}
           aoSalvar={salvarConfig}
+          aoSalvarNome={salvarNome}
           aoExportarCsv={exportarCsv}
           aoExportarJson={exportarJson}
           aoImportar={importar}

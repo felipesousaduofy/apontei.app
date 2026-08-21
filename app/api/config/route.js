@@ -8,21 +8,34 @@ const CAMPOS = [
   'intervalo_ativo', 'intervalo_inicio', 'intervalo_fim'
 ];
 
-export async function GET() {
+/**
+ * `usuario` é opcional e serve pra um supervisor ler a config de um colega de
+ * equipe (categorias, pra pintar a cor certa na tela de equipe). O RLS decide
+ * se a leitura é permitida.
+ */
+export async function GET(req) {
   const guarda = await exigirUsuario();
   if (guarda.resposta) return guarda.resposta;
   const { supabase, user } = guarda;
 
+  const url = new URL(req.url);
+  const alvo = url.searchParams.get('usuario') || user.id;
+  const proprio = alvo === user.id;
+
   const { data, error } = await supabase
     .from('config')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', alvo)
     .maybeSingle();
 
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
 
-  // quem se cadastrou antes do gatilho existir pode não ter linha de config
+  // quem se cadastrou antes do gatilho existir pode não ter linha de config —
+  // só cria automaticamente pra si mesmo; pra um colega visto por supervisor,
+  // a policy de insert bloquearia mesmo, então só devolve o padrão
   if (!data) {
+    if (!proprio) return NextResponse.json({ config: { ...CONFIG_PADRAO } });
+
     const { data: criada, error: erroCriar } = await supabase
       .from('config')
       .insert({ user_id: user.id })

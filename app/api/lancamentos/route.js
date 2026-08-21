@@ -16,22 +16,26 @@ function limpar(corpo, userId) {
 }
 
 /**
- * GET /api/lancamentos?de=&ate=&abertos=1
+ * GET /api/lancamentos?de=&ate=&abertos=1&usuario=
  * `abertos=1` traz junto as atividades ainda em andamento, mesmo que sejam de
  * antes do período pedido — senão um cronômetro esquecido na sexta some da tela
  * na segunda.
+ * `usuario` é opcional e serve pra um supervisor ver os lançamentos de um
+ * colega de equipe — sem ele, é sempre o próprio usuário logado. O RLS
+ * (supervisiona) decide se a leitura é permitida; sem permissão, vem vazio.
  */
 export async function GET(req) {
   const guarda = await exigirUsuario();
   if (guarda.resposta) return guarda.resposta;
-  const { supabase } = guarda;
+  const { supabase, user } = guarda;
 
   const url = new URL(req.url);
   const de = url.searchParams.get('de');
   const ate = url.searchParams.get('ate');
   const incluirAbertos = url.searchParams.get('abertos') === '1';
+  const alvo = url.searchParams.get('usuario') || user.id;
 
-  let query = supabase.from('lancamentos').select('*').order('data').order('inicio');
+  let query = supabase.from('lancamentos').select('*').eq('user_id', alvo).order('data').order('inicio');
   if (de) query = query.gte('data', de);
   if (ate) query = query.lte('data', ate);
 
@@ -44,6 +48,7 @@ export async function GET(req) {
     const { data: abertos, error: erroAbertos } = await supabase
       .from('lancamentos')
       .select('*')
+      .eq('user_id', alvo)
       .is('fim', null);
 
     if (erroAbertos) return NextResponse.json({ erro: erroAbertos.message }, { status: 500 });

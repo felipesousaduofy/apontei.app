@@ -6,6 +6,7 @@ import { supabaseNavegador } from '@/lib/supabase/client';
 
 export default function Signup() {
   const supabase = supabaseNavegador();
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
@@ -21,10 +22,15 @@ export default function Signup() {
     // cadastro — testando em localhost, volta para localhost; em produção,
     // para o domínio de produção. Sem isso, o Supabase usa sempre a "Site
     // URL" fixa configurada no painel, não importa de onde veio o cadastro.
+    // o gatilho criar_perfil lê raw_user_meta_data->>'nome' ao criar a conta,
+    // então o perfil já nasce com o nome preenchido
     const { error } = await supabase.auth.signUp({
       email,
       password: senha,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+      options: {
+        data: { nome: nome.trim().replace(/\s+/g, ' ') },
+        emailRedirectTo: `${window.location.origin}/auth/callback`
+      }
     });
     setEnviando(false);
     if (error) { setErro('Não foi possível criar a conta: ' + error.message); return; }
@@ -52,8 +58,14 @@ export default function Signup() {
         {erro && <div className="erro-auth">{erro}</div>}
         <form onSubmit={cadastrar}>
           <div className="campo-grupo">
+            <label className="rotulo" htmlFor="nome">Seu nome</label>
+            <input className="campo" id="nome" required autoFocus maxLength={60}
+              placeholder="Como você quer aparecer para a equipe"
+              value={nome} onChange={e => setNome(e.target.value)} />
+          </div>
+          <div className="campo-grupo">
             <label className="rotulo" htmlFor="email">E-mail</label>
-            <input className="campo" id="email" type="email" required autoFocus
+            <input className="campo" id="email" type="email" required
               value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="campo-grupo">

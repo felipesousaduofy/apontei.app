@@ -24,7 +24,7 @@ export default function Consolidado({
   const somaMin = pecas.reduce((s, p) => s + p.arredondado, 0);
 
   return (
-    <aside className="painel">
+    <aside className="painel painel--consolidado">
       <div className="painel__cab">
         <h2>Texto para apontar</h2>
         <span className="contagem-sel">{total ? `${marcadas} de ${total}` : ''}</span>
@@ -71,7 +71,7 @@ export default function Consolidado({
         </label>
       </div>
 
-      <div>
+      <div className="consolidado__grupos">
         {pecas.length === 0 ? (
           <div className="vazio-estado">
             <span className="vazio-estado__icone"><Icone nome="inbox" tamanho={20} /></span>

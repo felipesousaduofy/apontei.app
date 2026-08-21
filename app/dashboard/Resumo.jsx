@@ -22,7 +22,7 @@ function Kpi({ icone, rotulo, valor, sufixo, nota, barra, estado }) {
   );
 }
 
-export default function Resumo({ lancamentos, dias, modo, config }) {
+export default function Resumo({ lancamentos, dias, modo, config, className = '' }) {
   const r = resumoDoPeriodo(lancamentos, dias, modo, config);
 
   // acima de 85% da jornada o dia já está praticamente coberto; abaixo de 40%
@@ -30,7 +30,7 @@ export default function Resumo({ lancamentos, dias, modo, config }) {
   const estadoJornada = r.percentual >= 85 ? 'ok' : r.percentual < 40 ? 'alerta' : null;
 
   return (
-    <section className="resumo" aria-label="Resumo do período">
+    <section className={('resumo ' + className).trim()} aria-label="Resumo do período">
       <Kpi
         icone="relogio"
         rotulo={modo === 'semana' ? 'Apontado na semana' : 'Apontado no dia'}

@@ -110,7 +110,7 @@ function Cartao({ tarefa, colunaId, arrastando, hoje, aoArrastar, aoEncerrar, ao
   );
 }
 
-export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
+export default function KanbanClient({ tarefasIniciais, email, nome, ehAdmin }) {
   const [tarefas, setTarefas] = useState(tarefasIniciais);
   const [novoTitulo, setNovoTitulo] = useState('');
   const [novoChamado, setNovoChamado] = useState('');
@@ -327,7 +327,7 @@ export default function KanbanClient({ tarefasIniciais, email, ehAdmin }) {
       <header className="topo">
         <Marca altura={34} />
         <span className="rotulo">Quadro</span>
-        <span className="email">{email}</span>
+        <span className="email" title={email}>{nome || email}</span>
         <div className="acoes">
           <Link className="btn btn--mini" href="/dashboard" title="Apontamentos">
             <Icone nome="relogio" tamanho={14} /><span className="rotulo-btn">Apontamentos</span>

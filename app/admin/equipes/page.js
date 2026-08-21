@@ -1,39 +1,31 @@
 import { redirect } from 'next/navigation';
 import { usuarioComPerfil } from '@/lib/supabase/sessao';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import UsuariosClient from './UsuariosClient';
+import EquipesClient from './EquipesClient';
 
-export const metadata = { title: 'apontei. · usuários' };
+export const metadata = { title: 'apontei. · equipes' };
 
-export default async function PaginaUsuarios() {
+export default async function PaginaEquipes() {
   const { user, perfil } = await usuarioComPerfil();
   if (!user) redirect('/login');
   if (!perfil?.is_admin) redirect('/dashboard');
 
-  let usuarios = [];
   let equipes = [];
   let erroInicial = '';
 
   try {
     const admin = supabaseAdmin();
-    const [{ data, error }, { data: dataEquipes, error: erroEquipes }] = await Promise.all([
-      admin.from('perfis_com_totais').select('*').order('criado_em'),
-      admin.from('equipes').select('*').order('nome')
-    ]);
+    const { data, error } = await admin.from('equipes').select('*').order('nome');
     if (error) throw new Error(error.message);
-    if (erroEquipes) throw new Error(erroEquipes.message);
-    usuarios = data || [];
-    equipes = dataEquipes || [];
+    equipes = data || [];
   } catch (e) {
     erroInicial = e.message;
   }
 
   return (
-    <UsuariosClient
-      usuariosIniciais={usuarios}
+    <EquipesClient
       equipesIniciais={equipes}
       erroInicial={erroInicial}
-      meuId={user.id}
       email={user.email}
       nome={perfil?.nome || ''}
     />

@@ -6,22 +6,31 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 // não uma data. 'none' desfaz o bloqueio.
 const BLOQUEIO_LONGO = '876000h';
 
-/** PATCH: liga/desliga admin e ativa/desativa a conta. */
+/** PATCH: liga/desliga admin, ativa/desativa a conta, equipe e supervisão. */
 export async function PATCH(req, { params }) {
   const guarda = await exigirAdmin();
   if (guarda.resposta) return guarda.resposta;
-
-  if (params.id === guarda.user.id) {
-    return NextResponse.json(
-      { erro: 'Você não pode alterar a permissão ou a situação da sua própria conta.' },
-      { status: 400 }
-    );
-  }
 
   const corpo = await req.json();
   const alteracoes = {};
   if (typeof corpo.is_admin === 'boolean') alteracoes.is_admin = corpo.is_admin;
   if (typeof corpo.ativo === 'boolean') alteracoes.ativo = corpo.ativo;
+  if (typeof corpo.is_supervisor === 'boolean') alteracoes.is_supervisor = corpo.is_supervisor;
+  if (typeof corpo.supervisor_pode_editar === 'boolean') {
+    alteracoes.supervisor_pode_editar = corpo.supervisor_pode_editar;
+  }
+  if ('equipe_id' in corpo) alteracoes.equipe_id = corpo.equipe_id || null;
+
+  // só barra mexer na própria permissão de admin ou situação da conta —
+  // é o que evitaria a pessoa se trancar fora do próprio acesso. Equipe e
+  // supervisão não têm esse risco: o admin precisa poder entrar numa equipe
+  // pra alguém mais virar supervisor dele.
+  if (params.id === guarda.user.id && ('is_admin' in alteracoes || 'ativo' in alteracoes)) {
+    return NextResponse.json(
+      { erro: 'Você não pode alterar sua própria permissão de admin ou a situação da própria conta.' },
+      { status: 400 }
+    );
+  }
 
   if (Object.keys(alteracoes).length === 0) {
     return NextResponse.json({ erro: 'nada para alterar' }, { status: 400 });
